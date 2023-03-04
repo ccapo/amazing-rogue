@@ -2,7 +2,7 @@
 #include "main.hpp"
 #include <SDL2/SDL.h>
 
-Engine::Engine(int screenWidth, int screenHeight): gameStatus(STARTUP), renderMode(DEFAULT), fovRadius(10), screenWidth(screenWidth),screenHeight(screenHeight) {
+Engine::Engine(int screenWidth, int screenHeight): gameStatus(STARTUP), renderMode(DEFAULT), fovRadius(10), screenWidth(screenWidth),screenHeight(screenHeight),level(1) {
     TCODConsole::setCustomFont("data/fonts/arial10x10.png", TCOD_FONT_LAYOUT_TCOD | TCOD_FONT_TYPE_GREYSCALE, 32, 8);
     TCODConsole::initRoot(screenWidth,screenHeight,"libtcod C++ tutorial",false);
     gui = new Gui();
@@ -20,8 +20,11 @@ void Engine::init() {
     player->ai = new PlayerAi();
     player->container = new Container(26);
     actors.push(player);
+    stairs = new Actor(0,0,'>',"stairs",TCODColor::white);
+    stairs->blocks=false;
+    actors.push(stairs);
     map = new Map(80,43);
-
+    map->init(true);
     gui->message(TCODColor::red, "Welcome stranger!\nPrepare to perish in the Tombs of the Ancient Kings.");
     gameStatus=STARTUP;
 }
@@ -114,4 +117,23 @@ Actor *Engine::getActor(int x, int y) const {
         }
     }
     return NULL;
+}
+
+void Engine::nextLevel() {
+    level++;
+    gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
+    player->destructible->heal(player->destructible->maxHp/2);
+    gui->message(TCODColor::red,"After a rare moment of peace, you descend\ndeeper into the heart of the dungeon...");
+    delete map;
+    // delete all actors but player and stairs
+    for (Actor **it=actors.begin(); it!=actors.end(); it++) {
+        if ( *it != player && *it != stairs ) {
+            delete *it;
+            it = actors.remove(it);
+        }
+    }
+    // create a new map
+    map = new Map(80,43);
+    map->init(true);
+    gameStatus=STARTUP; 
 }

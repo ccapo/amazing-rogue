@@ -30,6 +30,7 @@
 *.exe
 *.out
 *.app
+libtcod-tutorial-new
 
 # Misc
 tools/notes.md

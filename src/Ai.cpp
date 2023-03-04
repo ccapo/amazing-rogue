@@ -29,6 +29,13 @@ void PlayerAi::update(Actor *owner) {
     case TCODK_DOWN : dy=1; break;
     case TCODK_LEFT : dx=-1; break;
     case TCODK_RIGHT : dx=1; break;
+    case TCODK_ENTER: {
+        if ( engine.stairs->x == owner->x && engine.stairs->y == owner->y ) {
+            engine.nextLevel();
+        } else {
+            engine.gui->message(TCODColor::lightGrey,"There are no stairs here.");
+        }
+    }
     case TCODK_CHAR : handleActionKey(owner, engine.lastKey.c); break;
         default:break;
     }
