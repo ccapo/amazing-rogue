@@ -16,12 +16,12 @@ public:
     if ( node->isLeaf() ) {
         int x,y,w,h;
         // dig a room
-        bool withActors=(bool)userData;
+        bool withObjects=(bool)userData;
         w=map.rng->getInt(ROOM_MIN_SIZE, node->w-2);
         h=map.rng->getInt(ROOM_MIN_SIZE, node->h-2);
         x=map.rng->getInt(node->x+1, node->x+node->w-w-1);
         y=map.rng->getInt(node->y+1, node->y+node->h-h-1);
-        map.createRoom(roomNum == 0, x, y, x+w-1, y+h-1, withActors);
+        map.createRoom(roomNum == 0, x, y, x+w-1, y+h-1, withObjects);
         if ( roomNum != 0 ) {
             // dig a corridor from last room
             map.dig(lastx,lasty,x+w/2,lasty);
@@ -39,14 +39,14 @@ Map::Map(int width, int height) : width(width),height(height) {
     seed=TCODRandom::getInstance()->getInt(0,0x7FFFFFFF);
 }
 
-void Map::init(bool withActors) {
+void Map::init(bool withObjects) {
     rng = new TCODRandom(seed, TCOD_RNG_CMWC);
     tiles=new Tile[width*height];
     map=new TCODMap(width,height);
     TCODBsp bsp(0,0,width,height);
     bsp.splitRecursive(rng,8,ROOM_MAX_SIZE,ROOM_MAX_SIZE,1.5f,1.5f);
     BspListener listener(*this);
-    bsp.traverseInvertedLevelOrder(&listener,(void *)withActors);
+    bsp.traverseInvertedLevelOrder(&listener,(void *)withObjects);
 }
 
 Map::~Map() {
@@ -122,9 +122,9 @@ void Map::dig(int x1, int y1, int x2, int y2) {
     }
 }
 
-void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors) {
+void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withObjects) {
     dig(x1,y1,x2,y2);
-    if (!withActors) {
+    if (!withObjects) {
         return;
     }   
     if ( first ) {
@@ -167,11 +167,11 @@ bool Map::canWalk(int x, int y) const {
         // this is a wall
         return false;
     }
-    for (Actor **iterator=engine.actors.begin();
-        iterator!=engine.actors.end();iterator++) {
-        Actor *actor=*iterator;
-        if ( actor->blocks && actor->x == x && actor->y == y ) {
-            // there is an actor there. cannot walk
+    for (Object **iterator=engine.objects.begin();
+        iterator!=engine.objects.end();iterator++) {
+        Object *object=*iterator;
+        if ( object->blocks && object->x == x && object->y == y ) {
+            // there is an object there. cannot walk
             return false;
         }
     }
@@ -182,18 +182,16 @@ void Map::addMonster(int x, int y) {
     TCODRandom *rng=TCODRandom::getInstance();
     if ( rng->getInt(0,100) < 80 ) {
         // create an orc
-        Actor *orc = new Actor(x,y,'o',"orc", TCODColor::desaturatedGreen);
-        orc->destructible = new MonsterDestructible(10,0,"dead orc",35);
-        orc->attacker = new Attacker(3);
-        orc->ai = new MonsterAi();
-        engine.actors.push(orc);
+        Object *orc = new Object(x,y,'o',"orc", TCODColor::desaturatedGreen);
+        orc->entity = new CreatureEntity(10,3,0,"dead orc",35);
+        orc->entity->ai = new MonsterAi();
+        engine.objects.push(orc);
     } else {
         // create a troll
-        Actor *troll = new Actor(x,y,'T',"troll", TCODColor::darkerGreen);
-        troll->destructible = new MonsterDestructible(16,1,"troll carcass",100);
-        troll->attacker = new Attacker(4);
-        troll->ai = new MonsterAi();
-        engine.actors.push(troll);
+        Object *troll = new Object(x,y,'T',"troll", TCODColor::darkerGreen);
+        troll->entity = new CreatureEntity(16,4,1,"troll carcass",100);
+        troll->entity->ai = new MonsterAi();
+        engine.objects.push(troll);
     }
 }
 
@@ -202,27 +200,27 @@ void Map::addItem(int x, int y) {
     int dice = rng->getInt(0,100);
     if ( dice < 70 ) {
         // create a health potion
-        Actor *healthPotion=new Actor(x,y,'!',"health potion",TCODColor::violet);
+        Object *healthPotion=new Object(x,y,'!',"health potion",TCODColor::violet);
         healthPotion->blocks=false;
-        healthPotion->pickable=new Healer(4);
-        engine.actors.push(healthPotion);
+        healthPotion->item=new Healer(4);
+        engine.objects.push(healthPotion);
     } else if ( dice < 70+10 ) {
         // create a scroll of lightning bolt 
-        Actor *scrollOfLightningBolt=new Actor(x,y,'#',"scroll of lightning bolt",TCODColor::lightYellow);
+        Object *scrollOfLightningBolt=new Object(x,y,'#',"scroll of lightning bolt",TCODColor::lightYellow);
         scrollOfLightningBolt->blocks=false;
-        scrollOfLightningBolt->pickable=new LightningBolt(5,20);
-        engine.actors.push(scrollOfLightningBolt);
+        scrollOfLightningBolt->item=new LightningBolt(5,20);
+        engine.objects.push(scrollOfLightningBolt);
     } else if ( dice < 70+10+10 ) {
         // create a scroll of fireball
-        Actor *scrollOfFireball=new Actor(x,y,'#',"scroll of fireball",TCODColor::lightRed);
+        Object *scrollOfFireball=new Object(x,y,'#',"scroll of fireball",TCODColor::lightRed);
         scrollOfFireball->blocks=false;
-        scrollOfFireball->pickable=new Fireball(3,12);
-        engine.actors.push(scrollOfFireball);
+        scrollOfFireball->item=new Fireball(3,15);
+        engine.objects.push(scrollOfFireball);
     } else {
         // create a scroll of confusion
-        Actor *scrollOfConfusion=new Actor(x,y,'#',"scroll of confusion",TCODColor::lightBlue);
+        Object *scrollOfConfusion=new Object(x,y,'#',"scroll of confusion",TCODColor::lightBlue);
         scrollOfConfusion->blocks=false;
-        scrollOfConfusion->pickable=new Confuser(10,8);
-        engine.actors.push(scrollOfConfusion);
+        scrollOfConfusion->item=new Confuser(10,8);
+        engine.objects.push(scrollOfConfusion);
     }
 }

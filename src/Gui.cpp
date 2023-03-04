@@ -22,15 +22,15 @@ void Gui::render() {
     con->clear();
 
     // draw the health bar
-    renderBar(1,1,BAR_WIDTH,"HP",engine.player->destructible->hp,
-        engine.player->destructible->maxHp,
+    renderBar(1,1,BAR_WIDTH,"HP",engine.player->entity->hp,
+        engine.player->entity->maxHp,
         TCODColor::lightRed,TCODColor::darkerRed);
 
     // draw the XP bar
-    PlayerAi *ai=(PlayerAi *)engine.player->ai;
+    PlayerAi *ai=(PlayerAi *)engine.player->entity->ai;
     char xpTxt[128];
     sprintf(xpTxt,"XP(%d)",ai->xpLevel);
-    renderBar(1,5,BAR_WIDTH,xpTxt,engine.player->destructible->xp,
+    renderBar(1,5,BAR_WIDTH,xpTxt,engine.player->entity->xp,
         ai->getNextLevelXp(),
         TCODColor::lightViolet,TCODColor::darkerViolet);
 
@@ -97,19 +97,19 @@ void Gui::renderMouseLook() {
     }
     char buf[128]="";
     bool first=true;
-    for (Actor **it=engine.actors.begin(); it != engine.actors.end(); it++) {
-        Actor *actor=*it;
-        // find actors under the mouse cursor
-        if (actor->x == engine.mouse.cx && actor->y == engine.mouse.cy ) {
+    for (Object **it=engine.objects.begin(); it != engine.objects.end(); it++) {
+        Object *object=*it;
+        // find objects under the mouse cursor
+        if (object->x == engine.mouse.cx && object->y == engine.mouse.cy ) {
             if (! first) {
                 strcat(buf,", ");
             } else {
                 first=false;
             }
-            strcat(buf,actor->name);
+            strcat(buf,object->name);
         }
     }
-    // display the list of actors under the mouse cursor
+    // display the list of objects under the mouse cursor
     con->setDefaultForeground(TCODColor::lightGrey);
     con->print(1,0,buf);
 }

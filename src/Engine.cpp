@@ -14,15 +14,14 @@ Engine::~Engine() {
 }
 
 void Engine::init() {
-    player = new Actor(40,25,'@',"player",TCODColor::black);
-    player->destructible=new PlayerDestructible(30,2,"your cadaver");
-    player->attacker=new Attacker(5);
-    player->ai = new PlayerAi();
-    player->container = new Container(26);
-    actors.push(player);
-    stairs = new Actor(0,0,'>',"stairs",TCODColor::white);
+    player = new Object(40,25,'@',"player",TCODColor::black);
+    player->entity = new PlayerEntity(30,5,2,"your cadaver");
+    player->entity->ai = new PlayerAi();
+    player->container = new Container(12);
+    objects.push(player);
+    stairs = new Object(0,0,'>',"stairs",TCODColor::white);
     stairs->blocks=false;
-    actors.push(stairs);
+    objects.push(stairs);
     map = new Map(80,43);
     map->init(true);
     gui->message(TCODColor::red, "Welcome to Amazing Rogue!\nPrepare to perish in the Labyrinth of the Minotaur.");
@@ -30,7 +29,7 @@ void Engine::init() {
 }
 
 void Engine::term() {
-    actors.clearAndDelete();
+    objects.clearAndDelete();
     if ( map ) delete map;
     gui->clear();
 }
@@ -58,11 +57,11 @@ void Engine::update() {
     TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS|TCOD_EVENT_MOUSE,&lastKey,&mouse);
     player->update();
     if ( gameStatus == NEW_TURN ) {
-        for (Actor **iterator=actors.begin(); iterator != actors.end();
+        for (Object **iterator=objects.begin(); iterator != objects.end();
             iterator++) {
-            Actor *actor=*iterator;
-            if ( actor != player ) {
-                actor->update();
+            Object *object = *iterator;
+            if ( object != player ) {
+                object->update();
             }
         }
     }
@@ -72,11 +71,11 @@ void Engine::render() {
     TCODConsole::root->clear();
     // draw the map
     map->render();
-    // draw the actors
-    for (Actor **iterator=actors.begin(); iterator != actors.end(); iterator++) {
-        Actor *actor=*iterator;
-        if ( map->isInFov(actor->x,actor->y) ) {
-            actor->render();
+    // draw the objects
+    for (Object **iterator=objects.begin(); iterator != objects.end(); iterator++) {
+        Object *object = *iterator;
+        if ( map->isInFov(object->x, object->y) ) {
+            object->render();
         }
     }
     player->render();
@@ -84,36 +83,36 @@ void Engine::render() {
     gui->render();
 }
 
-void Engine::sendToBack(Actor *actor) {
-    actors.remove(actor);
-    actors.insertBefore(actor,0);
+void Engine::sendToBack(Object *object) {
+    objects.remove(object);
+    objects.insertBefore(object,0);
 }
 
-Actor *Engine::getClosestMonster(int x, int y, float range) const {
-    Actor *closest=NULL;
+Object *Engine::getClosestMonster(int x, int y, float range) const {
+    Object *closest=NULL;
     float bestDistance=1E6f;
-    for (Actor **iterator=actors.begin();
-        iterator != actors.end(); iterator++) {
-        Actor *actor=*iterator;
-        if ( actor != player && actor->destructible 
-            && !actor->destructible->isDead() ) {
-            float distance=actor->getDistance(x,y);
+    for (Object **iterator=objects.begin();
+        iterator != objects.end(); iterator++) {
+        Object *object = *iterator;
+        if ( object != player && object->entity 
+            && !object->entity->isDead() ) {
+            float distance=object->getDistance(x,y);
             if ( distance < bestDistance && ( distance <= range || range == 0.0f ) ) {
                 bestDistance=distance;
-                closest=actor;
+                closest=object;
             }
         }
     }
     return closest;
 }
 
-Actor *Engine::getActor(int x, int y) const {
-    for (Actor **iterator=actors.begin();
-        iterator != actors.end(); iterator++) {
-        Actor *actor=*iterator;
-        if ( actor->x == x && actor->y ==y && actor->destructible
-            && ! actor->destructible->isDead()) {
-            return actor;
+Object *Engine::getObject(int x, int y) const {
+    for (Object **iterator=objects.begin();
+        iterator != objects.end(); iterator++) {
+        Object *object=*iterator;
+        if ( object->x == x && object->y ==y && object->entity
+            && ! object->entity->isDead()) {
+            return object;
         }
     }
     return NULL;
@@ -122,14 +121,14 @@ Actor *Engine::getActor(int x, int y) const {
 void Engine::nextLevel() {
     level++;
     gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
-    player->destructible->heal(player->destructible->maxHp/2);
+    player->entity->heal(player->entity->maxHp/2);
     gui->message(TCODColor::red,"After a rare moment of peace, you descend\ndeeper into the heart of the dungeon...");
     delete map;
-    // delete all actors but player and stairs
-    for (Actor **it=actors.begin(); it!=actors.end(); it++) {
+    // delete all objects but player and stairs
+    for (Object **it=objects.begin(); it!=objects.end(); it++) {
         if ( *it != player && *it != stairs ) {
             delete *it;
-            it = actors.remove(it);
+            it = objects.remove(it);
         }
     }
     // create a new map

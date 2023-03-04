@@ -1,13 +1,13 @@
 #include "libtcod.hpp"
 
-class Actor;
+class Object;
 class Map;
 
 class Engine {
 public :
-    TCODList<Actor *> actors;
-    Actor *player;
-    Actor *stairs;
+    TCODList<Object *> objects;
+    Object *player;
+    Object *stairs;
     Map *map;
     Gui *gui;
     bool computeFov;
@@ -26,9 +26,9 @@ public :
     void update();
     void render();
     void nextLevel();
-    void sendToBack(Actor *actor);
-    Actor *getClosestMonster(int x, int y, float range) const;
-    Actor *getActor(int x, int y) const;
+    void sendToBack(Object *object);
+    Object *getClosestMonster(int x, int y, float range) const;
+    Object *getObject(int x, int y) const;
 
     enum GameStatus {
         STARTUP,

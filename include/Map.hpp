@@ -16,7 +16,7 @@ public :
    void computeFov();
    void render() const;
 
-   void init(bool withActors);
+   void init(bool withObjects);
 protected :
    Tile *tiles;
    TCODMap *map;
@@ -25,7 +25,7 @@ protected :
    friend class BspListener;
 
    void dig(int x1, int y1, int x2, int y2);
-   void createRoom(bool first, int x1, int y1, int x2, int y2, bool withActors);
+   void createRoom(bool first, int x1, int y1, int x2, int y2, bool withObjects);
    void addMonster(int x, int y);
    void addItem(int x, int y);
 };

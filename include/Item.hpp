@@ -1,40 +1,40 @@
-class Pickable {
+class Item {
 public:
-    bool pick(Actor *owner, Actor *wearer);
-    void drop(Actor *owner, Actor *wearer);
-    virtual bool use(Actor *owner, Actor *wearer);
+    bool pick(Object *owner, Object *wearer);
+    void drop(Object *owner, Object *wearer);
+    virtual bool use(Object *owner, Object *wearer);
     virtual bool cast(int x, int y) = 0;
 };
 
-class Healer: public Pickable {
+class Healer: public Item {
 public:
     float amount; // how many hp
     Healer(float amount);
-    bool use(Actor *owner, Actor *wearer);
+    bool use(Object *owner, Object *wearer);
     bool cast(int x, int y);
 };
 
-class LightningBolt: public Pickable {
+class LightningBolt: public Item {
 public:
     float range, damage;
     LightningBolt(float range, float damage);
-    bool use(Actor *owner, Actor *wearer);
+    bool use(Object *owner, Object *wearer);
     bool cast(int x, int y);
 };
 
-class Fireball: public Pickable {
+class Fireball: public Item {
 public:
     float range, damage;
     Fireball(float range, float damage);
-    bool use(Actor *owner, Actor *wearer);
+    bool use(Object *owner, Object *wearer);
     bool cast(int x, int y);
 };
 
-class Confuser: public Pickable {
+class Confuser: public Item {
 public:
     int nbTurns;
     float range;
     Confuser(int nbTurns, float range);
-    bool use(Actor *owner, Actor *wearer);
+    bool use(Object *owner, Object *wearer);
     bool cast(int x, int y);
 };

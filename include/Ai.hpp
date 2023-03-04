@@ -1,8 +1,8 @@
 class Ai {
 public:
     virtual ~Ai() {};
-    virtual void update(Actor *owner)=0;
-    Actor *castable;
+    virtual void update(Object *owner)=0;
+    Object *castable;
 };
 
 class PlayerAi: public Ai {
@@ -10,27 +10,27 @@ public:
     int xpLevel;
     PlayerAi();
     int getNextLevelXp();
-    void update(Actor *owner);
+    void update(Object *owner);
 
 protected:
-    bool moveOrAttack(Actor *owner, int targetx, int targety);
-    void handleActionKey(Actor *owner, int ascii);
-    Actor *choseFromInventory(Actor *owner);
+    bool moveOrAttack(Object *owner, int targetx, int targety);
+    void handleActionKey(Object *owner, int ascii);
+    Object *choseFromInventory(Object *owner);
 };
 
 class MonsterAi: public Ai {
 public:
-    void update(Actor *owner);
+    void update(Object *owner);
  
 protected:
     int moveCount = 0;
-    void moveOrAttack(Actor *owner, int targetx, int targety);
+    void moveOrAttack(Object *owner, int targetx, int targety);
 };
 
 class ConfusedMonsterAi: public Ai {
 public:
     ConfusedMonsterAi(int nbTurns, Ai *oldAi);
-    void update(Actor *owner);
+    void update(Object *owner);
 protected:
     int nbTurns;
     Ai *oldAi;

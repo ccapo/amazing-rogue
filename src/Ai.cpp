@@ -14,11 +14,11 @@ int PlayerAi::getNextLevelXp() {
 // after losing his sight
 static const int TRACKING_TURNS=3;
 
-void PlayerAi::update(Actor *owner) {
+void PlayerAi::update(Object *owner) {
     int levelUpXp = getNextLevelXp();
-    if ( owner->destructible->xp >= levelUpXp ) {
+    if ( owner->entity->xp >= levelUpXp ) {
         xpLevel++;
-        owner->destructible->xp -= levelUpXp;
+        owner->entity->xp -= levelUpXp;
         engine.gui->message(TCODColor::yellow,"Your battle skills grow stronger! You reached level %d",xpLevel);
         engine.gui->menu.clear();
         engine.gui->menu.addItem(Menu::CONSTITUTION,"Constitution (+20HP)");
@@ -27,29 +27,29 @@ void PlayerAi::update(Actor *owner) {
         Menu::MenuItemCode menuItem=engine.gui->menu.pick(Menu::PAUSE);
         switch (menuItem) {
             case Menu::CONSTITUTION :
-                owner->destructible->maxHp+=20;
-                owner->destructible->hp+=20;
+                owner->entity->maxHp+=20;
+                owner->entity->hp+=20;
                 break;
             case Menu::STRENGTH :
-                owner->attacker->power += 1;
+                owner->entity->atk += 1;
                 break;
             case Menu::AGILITY :
-                owner->destructible->defense += 1;
+                owner->entity->def += 1;
                 break;
             default:break;
         }
     }
 
-    if ( owner->destructible && owner->destructible->isDead() ) {
+    if ( owner->entity && owner->entity->isDead() ) {
         return;
     }
 
     if (engine.renderMode == Engine::TARGET) {
         if ( engine.map->isInFov(engine.mouse.cx,engine.mouse.cy) ) {
             if ( engine.mouse.lbutton_pressed ) {
-                if ( owner->ai->castable ) {
-                    owner->ai->castable->pickable->cast(engine.mouse.cx, engine.mouse.cy);
-                    delete owner->ai->castable;
+                if ( owner->entity->ai->castable ) {
+                    owner->entity->ai->castable->item->cast(engine.mouse.cx, engine.mouse.cy);
+                    delete owner->entity->ai->castable;
                 }
                 engine.gameStatus=Engine::NEW_TURN;
                 engine.renderMode=Engine::DEFAULT;
@@ -82,28 +82,28 @@ void PlayerAi::update(Actor *owner) {
     }
 }
 
-bool PlayerAi::moveOrAttack(Actor *owner, int targetx,int targety) {
+bool PlayerAi::moveOrAttack(Object *owner, int targetx,int targety) {
     if ( engine.map->isWall(targetx,targety) ) return false;
-    // look for living actors to attack
-    for (Actor **iterator=engine.actors.begin();
-        iterator != engine.actors.end(); iterator++) {
-        Actor *actor=*iterator;
-        if ( actor->destructible && !actor->destructible->isDead()
-             && actor->x == targetx && actor->y == targety ) {
-            owner->attacker->attack(owner, actor);
+    // look for living objects to attack
+    for (Object **iterator=engine.objects.begin();
+        iterator != engine.objects.end(); iterator++) {
+        Object *object=*iterator;
+        if ( object->entity && !object->entity->isDead()
+             && object->x == targetx && object->y == targety ) {
+            owner->entity->attack(owner, object);
             return false;
         }
     }
 
     // look for corpses or items
-    for (Actor **iterator=engine.actors.begin();
-        iterator != engine.actors.end(); iterator++) {
-        Actor *actor=*iterator;
-        bool corpseOrItem=(actor->destructible && actor->destructible->isDead())
-            || actor->pickable;
-        if ( corpseOrItem && actor->destructible && actor->destructible->isDead()
-             && actor->x == targetx && actor->y == targety ) {
-            engine.gui->message(TCODColor::lightGrey,"There's a %s here",actor->name);
+    for (Object **iterator=engine.objects.begin();
+        iterator != engine.objects.end(); iterator++) {
+        Object *object=*iterator;
+        bool corpseOrItem=(object->entity && object->entity->isDead())
+            || object->item;
+        if ( corpseOrItem && object->entity && object->entity->isDead()
+             && object->x == targetx && object->y == targety ) {
+            engine.gui->message(TCODColor::lightGrey,"There's a %s here",object->name);
         }
     }
 
@@ -112,14 +112,14 @@ bool PlayerAi::moveOrAttack(Actor *owner, int targetx,int targety) {
     return true;
 }
 
-void PlayerAi::handleActionKey(Actor *owner, int ascii) {
+void PlayerAi::handleActionKey(Object *owner, int ascii) {
     static bool bTarget = false;
     switch(ascii) {
         case 'd' : // drop item 
         {
-            Actor *actor=choseFromInventory(owner);
-            if ( actor ) {
-                actor->pickable->drop(actor,owner);
+            Object *object=choseFromInventory(owner);
+            if ( object ) {
+                object->item->drop(object,owner);
                 engine.gameStatus=Engine::NEW_TURN;
             }           
         }
@@ -127,14 +127,14 @@ void PlayerAi::handleActionKey(Actor *owner, int ascii) {
         case 'g' : // pickup item
         {
             bool found=false;
-            for (Actor **iterator=engine.actors.begin();
-                iterator != engine.actors.end(); iterator++) {
-                Actor *actor=*iterator;
-                if ( actor->pickable && actor->x == owner->x && actor->y == owner->y ) {
-                    if (actor->pickable->pick(actor,owner)) {
+            for (Object **iterator=engine.objects.begin();
+                iterator != engine.objects.end(); iterator++) {
+                Object *object=*iterator;
+                if ( object->item && object->x == owner->x && object->y == owner->y ) {
+                    if (object->item->pick(object,owner)) {
                         found=true;
                         engine.gui->message(TCODColor::lightGrey,"You pick the %s.",
-                            actor->name);
+                            object->name);
                         break;
                     } else if (!found) {
                         found=true;
@@ -150,9 +150,9 @@ void PlayerAi::handleActionKey(Actor *owner, int ascii) {
         break;
         case 'i' : // display inventory
         {
-            Actor *actor=choseFromInventory(owner);
-            if ( actor ) {
-                actor->pickable->use(actor,owner);
+            Object *object=choseFromInventory(owner);
+            if ( object ) {
+                object->item->use(object,owner);
                 engine.gameStatus=Engine::NEW_TURN;
             }
         }
@@ -160,7 +160,7 @@ void PlayerAi::handleActionKey(Actor *owner, int ascii) {
     }
 }
 
-Actor *PlayerAi::choseFromInventory(Actor *owner) {
+Object *PlayerAi::choseFromInventory(Object *owner) {
     static const int INVENTORY_WIDTH=50;
     static const int INVENTORY_HEIGHT=28;
     static TCODConsole con(INVENTORY_WIDTH,INVENTORY_HEIGHT);
@@ -174,10 +174,10 @@ Actor *PlayerAi::choseFromInventory(Actor *owner) {
     con.setDefaultForeground(TCODColor::white);
     int shortcut='a';
     int y=1;
-    for (Actor **it=owner->container->inventory.begin();
+    for (Object **it=owner->container->inventory.begin();
         it != owner->container->inventory.end(); it++) {
-        Actor *actor=*it;
-        con.print(2,y,"(%c) %s", shortcut, actor->name);
+        Object *object=*it;
+        con.print(2,y,"(%c) %s", shortcut, object->name);
         y++;
         shortcut++;
     }
@@ -192,16 +192,16 @@ Actor *PlayerAi::choseFromInventory(Actor *owner) {
     TCOD_key_t key;
     TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS,&key,NULL,true);
     if ( key.vk == TCODK_CHAR ) {
-        int actorIndex=key.c - 'a';
-        if ( actorIndex >= 0 && actorIndex < owner->container->inventory.size() ) {
-            return owner->container->inventory.get(actorIndex);
+        int objectIndex=key.c - 'a';
+        if ( objectIndex >= 0 && objectIndex < owner->container->inventory.size() ) {
+            return owner->container->inventory.get(objectIndex);
         }
     }
     return NULL;
 }
 
-void MonsterAi::update(Actor *owner) {
-    if ( owner->destructible && owner->destructible->isDead() ) {
+void MonsterAi::update(Object *owner) {
+    if ( owner->entity && owner->entity->isDead() ) {
         return;
     }
     if ( engine.map->isInFov(owner->x,owner->y) ) {
@@ -215,7 +215,7 @@ void MonsterAi::update(Actor *owner) {
     }
 }
 
-void MonsterAi::moveOrAttack(Actor *owner, int targetx, int targety) {
+void MonsterAi::moveOrAttack(Object *owner, int targetx, int targety) {
     int dx = targetx - owner->x;
     int dy = targety - owner->y;
     int stepdx = (dx > 0 ? 1:-1);
@@ -232,14 +232,14 @@ void MonsterAi::moveOrAttack(Actor *owner, int targetx, int targety) {
         } else if ( engine.map->canWalk(owner->x,owner->y+stepdy) ) {
             owner->y += stepdy;
         }
-    } else if ( owner->attacker ) {
-        owner->attacker->attack(owner,engine.player);
+    } else if ( owner->entity ) {
+        owner->entity->attack(owner,engine.player);
     }
 }
 
 ConfusedMonsterAi::ConfusedMonsterAi(int nbTurns, Ai *oldAi): nbTurns(nbTurns),oldAi(oldAi) {}
 
-void ConfusedMonsterAi::update(Actor *owner) {
+void ConfusedMonsterAi::update(Object *owner) {
     TCODRandom *rng=TCODRandom::getInstance();
     int dx=rng->getInt(-1,1);
     int dy=rng->getInt(-1,1);
@@ -250,15 +250,15 @@ void ConfusedMonsterAi::update(Actor *owner) {
             owner->x = destx;
             owner->y = desty;
         } else {
-            Actor *actor=engine.getActor(destx, desty);
-            if ( actor ) {
-                owner->attacker->attack(owner, actor);
+            Object *object=engine.getObject(destx, desty);
+            if ( object ) {
+                owner->entity->attack(owner, object);
             }
         }
     }
     nbTurns--;
     if ( nbTurns == 0 ) {
-        owner->ai = oldAi;
+        owner->entity->ai = oldAi;
         delete this;
     }
 }
