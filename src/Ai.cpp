@@ -20,8 +20,26 @@ void PlayerAi::update(Actor *owner) {
         xpLevel++;
         owner->destructible->xp -= levelUpXp;
         engine.gui->message(TCODColor::yellow,"Your battle skills grow stronger! You reached level %d",xpLevel);
+        engine.gui->menu.clear();
+        engine.gui->menu.addItem(Menu::CONSTITUTION,"Constitution (+20HP)");
+        engine.gui->menu.addItem(Menu::STRENGTH,"Strength (+1 attack)");
+        engine.gui->menu.addItem(Menu::AGILITY,"Agility (+1 defense)");
+        Menu::MenuItemCode menuItem=engine.gui->menu.pick(Menu::PAUSE);
+        switch (menuItem) {
+            case Menu::CONSTITUTION :
+                owner->destructible->maxHp+=20;
+                owner->destructible->hp+=20;
+                break;
+            case Menu::STRENGTH :
+                owner->attacker->power += 1;
+                break;
+            case Menu::AGILITY :
+                owner->destructible->defense += 1;
+                break;
+            default:break;
+        }
     }
-    
+
     if ( owner->destructible && owner->destructible->isDead() ) {
         return;
     }

@@ -3,12 +3,19 @@ public :
     enum MenuItemCode {
         NONE,
         NEW_GAME,
-        EXIT
+        EXIT,
+        CONSTITUTION,
+        STRENGTH,
+        AGILITY
+    };
+    enum DisplayMode {
+        MAIN,
+        PAUSE
     };
     ~Menu();
     void clear();
     void addItem(MenuItemCode code, const char *label);
-    MenuItemCode pick();
+    MenuItemCode pick(DisplayMode mode=MAIN);
 protected :
     struct MenuItem {
         MenuItemCode code;
