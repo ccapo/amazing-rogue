@@ -14,12 +14,12 @@ SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 OBJECTS = $(SOURCES:.cpp=.o)
 HEADERS = $(wildcard $(INCDIR)/*.hpp)
 
-all: libtcod-tutorial-new
+all: amazing-rogue
 
-libtcod-tutorial-new: $(OBJECTS) $(HEADERS)
+amazing-rogue: $(OBJECTS) $(HEADERS)
 	@$(CXX) $(CFLAGS) $(OBJECTS) -o "$@" $(LFLAGS)
 	@rm -fr $(OBJECTS)
 
 clean:
-	@rm -fr libtcod-tutorial-new
+	@rm -fr amazing-rogue
 	@rm -fr $(OBJECTS)

@@ -4,7 +4,7 @@
 
 Engine::Engine(int screenWidth, int screenHeight): gameStatus(STARTUP), renderMode(DEFAULT), fovRadius(10), screenWidth(screenWidth),screenHeight(screenHeight),level(1) {
     TCODConsole::setCustomFont("data/fonts/arial10x10.png", TCOD_FONT_LAYOUT_TCOD | TCOD_FONT_TYPE_GREYSCALE, 32, 8);
-    TCODConsole::initRoot(screenWidth,screenHeight,"libtcod C++ tutorial",false);
+    TCODConsole::initRoot(screenWidth,screenHeight,"Amazing Rogue",false);
     gui = new Gui();
 }
 
@@ -25,7 +25,7 @@ void Engine::init() {
     actors.push(stairs);
     map = new Map(80,43);
     map->init(true);
-    gui->message(TCODColor::red, "Welcome stranger!\nPrepare to perish in the Tombs of the Ancient Kings.");
+    gui->message(TCODColor::red, "Welcome to Amazing Rogue!\nPrepare to perish in the Labyrinth of the Minotaur.");
     gameStatus=STARTUP;
 }
 

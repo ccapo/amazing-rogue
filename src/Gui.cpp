@@ -184,13 +184,15 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode) {
 
     while( !TCODConsole::isWindowClosed() ) {
         int currentItem=0;
+        TCODConsole::root->setDefaultForeground(TCODColor::lightRed);
+        TCODConsole::root->print(menux, menuy, "Amazing Rogue");
         for (MenuItem **it=items.begin(); it!=items.end(); it++) {
             if ( currentItem == selectedItem ) {
                 TCODConsole::root->setDefaultForeground(TCODColor::lighterOrange);
             } else {
                 TCODConsole::root->setDefaultForeground(TCODColor::lightGrey);
             }
-            TCODConsole::root->print(menux,menuy+currentItem*3,(*it)->label);
+            TCODConsole::root->print(menux,menuy+6+currentItem*3,(*it)->label);
             currentItem++;
         }
         TCODConsole::flush();
