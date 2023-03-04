@@ -1,11 +1,27 @@
 #include <math.h>
 #include "main.hpp"
 
+PlayerAi::PlayerAi() : xpLevel(1) {}
+
+const int LEVEL_UP_BASE=200;
+const int LEVEL_UP_FACTOR=150;
+
+int PlayerAi::getNextLevelXp() {
+    return LEVEL_UP_BASE + xpLevel*LEVEL_UP_FACTOR;
+}
+
 // how many turns the monster chases the player
 // after losing his sight
 static const int TRACKING_TURNS=3;
 
 void PlayerAi::update(Actor *owner) {
+    int levelUpXp = getNextLevelXp();
+    if ( owner->destructible->xp >= levelUpXp ) {
+        xpLevel++;
+        owner->destructible->xp -= levelUpXp;
+        engine.gui->message(TCODColor::yellow,"Your battle skills grow stronger! You reached level %d",xpLevel);
+    }
+    
     if ( owner->destructible && owner->destructible->isDead() ) {
         return;
     }
