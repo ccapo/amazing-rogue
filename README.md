@@ -9,4 +9,4 @@
 * Inventory list is scrollable (not sorted or aggregated)
     * Can use or drop items/spells
     * Inventory limit: 12
-    * Armour/Weapon/Relics are automatically equipped
+    * Armour/Weapon/Relics are automatically equipped when picked up

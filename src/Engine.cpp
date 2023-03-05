@@ -14,7 +14,7 @@ Engine::~Engine() {
 }
 
 void Engine::init() {
-    player = new Object(40,25,'@',"player",TCODColor::black);
+    player = new Object(0,0,'@',"player",TCODColor::black);
     player->entity = new PlayerEntity(30,5,2,"your cadaver");
     player->entity->ai = new PlayerAi();
     player->container = new Container(12);
@@ -22,7 +22,16 @@ void Engine::init() {
     stairs = new Object(0,0,'>',"stairs",TCODColor::white);
     stairs->blocks=false;
     objects.push(stairs);
-    map = new Map(80,43);
+    // TODO: Put in a separate thread
+    for (int l = 0; l < 1; l++) {
+        LevelMap *lm = new LevelMap(l);
+        lm->create();
+#ifdef DEBUG
+        lm->save();
+#endif
+        levelMaps.push(lm);
+    }
+    map = new Map(86,46);
     map->init(true);
     gui->message(TCODColor::red, "Welcome to Amazing Rogue!\nPrepare to perish in the Labyrinth of the Minotaur.");
     gameStatus=STARTUP;
@@ -30,6 +39,7 @@ void Engine::init() {
 
 void Engine::term() {
     objects.clearAndDelete();
+    levelMaps.clearAndDelete();
     if ( map ) delete map;
     gui->clear();
 }
@@ -57,8 +67,7 @@ void Engine::update() {
     TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS|TCOD_EVENT_MOUSE,&lastKey,&mouse);
     player->update();
     if ( gameStatus == NEW_TURN ) {
-        for (Object **iterator=objects.begin(); iterator != objects.end();
-            iterator++) {
+        for (Object **iterator=objects.begin(); iterator != objects.end(); iterator++) {
             Object *object = *iterator;
             if ( object != player ) {
                 object->update();
@@ -132,7 +141,7 @@ void Engine::nextLevel() {
         }
     }
     // create a new map
-    map = new Map(80,43);
+    map = new Map(86,46);
     map->init(true);
     gameStatus=STARTUP; 
 }

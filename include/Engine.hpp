@@ -2,12 +2,14 @@
 
 class Object;
 class Map;
+class LevelMap;
 
 class Engine {
 public :
     TCODList<Object *> objects;
     Object *player;
     Object *stairs;
+    TCODList<LevelMap *> levelMaps;
     Map *map;
     Gui *gui;
     bool computeFov;

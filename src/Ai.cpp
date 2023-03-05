@@ -76,6 +76,9 @@ void PlayerAi::update(Object *owner) {
 
     if (dx != 0 || dy != 0) {
         engine.gameStatus=Engine::NEW_TURN;
+        if (engine.map->isExit(owner->x+dx,owner->y+dy)) {
+            printf("Exiting Room\n");
+        }
         if (moveOrAttack(owner, owner->x+dx,owner->y+dy)) {
             engine.map->computeFov();
         }

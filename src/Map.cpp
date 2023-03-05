@@ -5,48 +5,17 @@ static const int ROOM_MIN_SIZE = 7;
 static const int MAX_ROOM_MONSTERS = 3;
 static const int MAX_ROOM_ITEMS = 2;
 
-class BspListener: public ITCODBspCallback {
-private:
-    Map &map; // a map to dig
-    int roomNum; // room number
-    int lastx,lasty; // center of the last room
-public:
-    BspListener(Map &map) : map(map), roomNum(0) {}
-    bool visitNode(TCODBsp *node, void *userData) {
-    if ( node->isLeaf() ) {
-        int x,y,w,h;
-        // dig a room
-        bool withObjects=(bool)userData;
-        w=map.rng->getInt(ROOM_MIN_SIZE, node->w-2);
-        h=map.rng->getInt(ROOM_MIN_SIZE, node->h-2);
-        x=map.rng->getInt(node->x+1, node->x+node->w-w-1);
-        y=map.rng->getInt(node->y+1, node->y+node->h-h-1);
-        map.createRoom(roomNum == 0, x, y, x+w-1, y+h-1, withObjects);
-        if ( roomNum != 0 ) {
-            // dig a corridor from last room
-            map.dig(lastx,lasty,x+w/2,lasty);
-            map.dig(x+w/2,lasty,x+w/2,y+h/2);
-        }
-        lastx=x+w/2;
-        lasty=y+h/2;
-        roomNum++;
-    }
-    return true;
-    }
-};
-
 Map::Map(int width, int height) : width(width),height(height) {
     seed=TCODRandom::getInstance()->getInt(0,0x7FFFFFFF);
 }
 
 void Map::init(bool withObjects) {
+    static int type = 0;
     rng = new TCODRandom(seed, TCOD_RNG_CMWC);
     tiles=new Tile[width*height];
     map=new TCODMap(width,height);
-    TCODBsp bsp(0,0,width,height);
-    bsp.splitRecursive(rng,8,ROOM_MAX_SIZE,ROOM_MAX_SIZE,1.5f,1.5f);
-    BspListener listener(*this);
-    bsp.traverseInvertedLevelOrder(&listener,(void *)withObjects);
+    makeRoom(type);
+    type = 1 - type;
 }
 
 Map::~Map() {
@@ -60,6 +29,10 @@ bool Map::isWall(int x, int y) const {
 
 bool Map::isExplored(int x, int y) const {
     return tiles[x+y*width].explored;
+}
+
+bool Map::isExit(int x, int y) const {
+    return tiles[x+y*width].exit;
 }
 
 bool Map::isInFov(int x, int y) const {
@@ -84,46 +57,147 @@ void Map::render() const {
     static const TCODColor lightWall(130,110,50);
     static const TCODColor lightGround(200,180,50);
 
-    for (int x=0; x < width; x++) {
-        for (int y=0; y < height; y++) {
-            if ( isInFov(x,y) ) {
-                TCODColor col = isWall(x,y) ? lightWall : lightGround;
+    for (int x = 0; x < width; x++) {
+        for (int y = 0; y < height; y++) {
+            if ( isInFov(x, y) ) {
+                TCODColor col = isWall(x, y) ? lightWall : lightGround;
                 if (engine.renderMode == Engine::TARGET) {
                     col = col * 1.25f;
                 }
-                TCODConsole::root->setCharBackground(x,y,col);
-            } 
-            else if ( isExplored(x,y) ) {
-                TCODConsole::root->setCharBackground(x,y,isWall(x,y) ? darkWall : darkGround );
+                TCODConsole::root->setCharBackground(x, y, col);
+            } else if ( isExplored(x, y) ) {
+                if ( isExit(x, y) ) {
+                    TCODConsole::root->setCharBackground(x, y, TCODColor::red);
+                } else {
+                    TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : darkGround);
+                }
             }
-        }    
+        }
     }
 
-    if ( engine.renderMode == Engine::TARGET && isInFov(engine.mouse.cx,engine.mouse.cy) ) {
-        TCODConsole::root->setCharBackground(engine.mouse.cx,engine.mouse.cy,TCODColor::white);
+    if ( engine.renderMode == Engine::TARGET && isInFov(engine.mouse.cx, engine.mouse.cy) ) {
+        TCODConsole::root->setCharBackground(engine.mouse.cx, engine.mouse.cy, TCODColor::white);
     }
 }
 
-void Map::dig(int x1, int y1, int x2, int y2) {
-    if ( x2 < x1 ) {
-       int tmp=x2;
-       x2=x1;
-       x1=tmp;
-    }
-    if ( y2 < y1 ) {
-       int tmp=y2;
-       y2=y1;
-       y1=tmp;
-    }
-    for (int tilex=x1; tilex <= x2; tilex++) {
-        for (int tiley=y1; tiley <= y2; tiley++) {
-            map->setProperties(tilex,tiley,true,true);
+void Map::makeRoom(int type) {
+    switch(type) {
+        case 0: {
+            std::vector<int> offsets;
+            // Standard Room
+            for (int x = width/4; x < 3*width/4; x++) {
+                for (int y = height/4; y < 3*height/4; y++) {
+                    map->setProperties(x, y, true, true);
+                }
+            }
+
+            // Add some pillars
+            int xc = 3*width/8;
+            int yc = 3*height/8;
+            map->setProperties(xc, yc, false, false);
+            map->setProperties(xc + 1, yc, false, false);
+            map->setProperties(xc, yc + 1, false, false);
+            map->setProperties(xc + 1, yc + 1, false, false);
+            xc = 3*width/8;
+            yc = 5*height/8;
+            map->setProperties(xc, yc, false, false);
+            map->setProperties(xc + 1, yc, false, false);
+            map->setProperties(xc, yc - 1, false, false);
+            map->setProperties(xc + 1, yc - 1, false, false);
+            xc = 5*width/8;
+            yc = 3*height/8;
+            map->setProperties(xc, yc, false, false);
+            map->setProperties(xc - 1, yc, false, false);
+            map->setProperties(xc, yc + 1, false, false);
+            map->setProperties(xc - 1, yc + 1, false, false);
+            xc = 5*width/8;
+            yc = 5*height/8;
+            map->setProperties(xc, yc, false, false);
+            map->setProperties(xc - 1, yc, false, false);
+            map->setProperties(xc, yc - 1, false, false);
+            map->setProperties(xc - 1, yc - 1, false, false);
+
+            for (int x = width/4; x < 3*width/4; x++) {
+                for (int y = height/4; y < 3*height/4; y++) {
+                    if (canWalk(x, y)) {
+                        int offset = x + y*width;
+                        offsets.push_back(offset);
+                    }
+                }
+            }
+
+            // put the player in the first room
+            engine.player->x = width/2;
+            engine.player->y = height/2;
+
+            // set stairs position
+            engine.stairs->x = width/2;
+            engine.stairs->y = 5*height/8;
+
+            // set exit
+            map->setProperties(width/2, 3*height/4, true, true);
+            tiles[width/2 + (3*height/4)*width].exit = true;
+
+            int sz = offsets.size();
+            int index = rng->getInt(0, sz - 1);
+            int offset = offsets[index];
+            int cx = offset % width;
+            int cy = (offset - cx)/width;
+            addMonster(cx, cy);
+            break;
+        }
+        case 1: {
+            // Maze Room
+            int w2 = (width/2 - 1)/2, h2 = (height/2 - 1)/2;
+            Maze m(w2, h2);
+            m.createMaze();
+#ifdef DEBUG
+            m.saveMaze();
+#endif
+            for (int x = 0; x < width/2; x++) {
+                for (int y = 0; y < height/2; y++) {
+                    int offset = x + y*(width/2);
+                    switch (m.maze_tiles[offset]) {
+                    case WALL:
+                        map->setProperties(x + width/4, y + height/4, false, false);
+                        break;
+                    case PATH:
+                        map->setProperties(x + width/4, y + height/4, true, true);
+                        break;
+                    case FLOOR:
+                        map->setProperties(x + width/4, y + height/4, true, true);
+                        break;
+                    default:
+                        printf("Unrecognized tile type: %c\n", m.maze_tiles[offset]);
+                    }
+                }
+            }
+
+            // put the player in the first room
+            engine.player->x = 1 + width/4;
+            engine.player->y = 0 + height/4;
+
+            // set stairs position
+            engine.stairs->x = 2 * w2 - 1 + width/4;
+            engine.stairs->y = 2 * h2 + height/4;
+
+            int sz = m.floor_tiles.size();
+            int index = rng->getInt(0, sz - 1);
+            int offset = m.floor_tiles[index];
+            int cx = offset % (width/2) + width/4;
+            int cy = (offset - cx)/(width/2) + height/4;
+            addMonster(cx, cy);
+
+            break;
+        }
+        default: {
+            printf("Unrecognized room type: %d\n", type);
+            break;
         }
     }
 }
 
 void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withObjects) {
-    dig(x1,y1,x2,y2);
     if (!withObjects) {
         return;
     }   
