@@ -2,7 +2,7 @@ struct Tile {
    bool explored; // has the player already seen this tile ?
    bool exit;
    float scent;
-   Tile() : explored(false), exit(false), scent(0.0) {}
+   Tile() : explored(false), scent(0.0) {}
 };
 
 class Map {
@@ -12,7 +12,6 @@ public :
    Map(int width, int height);
    ~Map();
    bool isWall(int x, int y) const;
-   bool isExit(int x, int y) const;
    bool isInFov(int x, int y) const;
    bool isExplored(int x, int y) const;
    bool canWalk(int x, int y) const;

@@ -12,8 +12,8 @@ Map::Map(int width, int height) : width(width),height(height) {
 void Map::init(bool withObjects) {
     static int type = 0;
     rng = new TCODRandom(seed, TCOD_RNG_CMWC);
-    tiles=new Tile[width*height];
-    map=new TCODMap(width,height);
+    tiles = new Tile[width*height];
+    map = new TCODMap(width,height);
     makeRoom(type);
     type = 1 - type;
 }
@@ -29,10 +29,6 @@ bool Map::isWall(int x, int y) const {
 
 bool Map::isExplored(int x, int y) const {
     return tiles[x+y*width].explored;
-}
-
-bool Map::isExit(int x, int y) const {
-    return tiles[x+y*width].exit;
 }
 
 bool Map::isInFov(int x, int y) const {
@@ -66,11 +62,7 @@ void Map::render() const {
                 }
                 TCODConsole::root->setCharBackground(x, y, col);
             } else if ( isExplored(x, y) ) {
-                if ( isExit(x, y) ) {
-                    TCODConsole::root->setCharBackground(x, y, TCODColor::red);
-                } else {
-                    TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : darkGround);
-                }
+                TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : darkGround);
             }
         }
     }
@@ -131,12 +123,14 @@ void Map::makeRoom(int type) {
             engine.player->y = height/2;
 
             // set stairs position
-            engine.stairs->x = width/2;
-            engine.stairs->y = 5*height/8;
+            //engine.stairs->x = width/2;
+            //engine.stairs->y = 5*height/8;
 
-            // set exit
-            map->setProperties(width/2, 3*height/4, true, true);
-            tiles[width/2 + (3*height/4)*width].exit = true;
+            // set the exits
+            for (Object **iterator = engine.exits.begin(); iterator != engine.exits.end(); iterator++) {
+                Object *exit = *iterator;
+                map->setProperties(exit->x, exit->y, true, true);
+            }
 
             int sz = offsets.size();
             int index = rng->getInt(0, sz - 1);
@@ -161,9 +155,6 @@ void Map::makeRoom(int type) {
                     case WALL:
                         map->setProperties(x + width/4, y + height/4, false, false);
                         break;
-                    case PATH:
-                        map->setProperties(x + width/4, y + height/4, true, true);
-                        break;
                     case FLOOR:
                         map->setProperties(x + width/4, y + height/4, true, true);
                         break;
@@ -178,8 +169,15 @@ void Map::makeRoom(int type) {
             engine.player->y = 0 + height/4;
 
             // set stairs position
-            engine.stairs->x = 2 * w2 - 1 + width/4;
-            engine.stairs->y = 2 * h2 + height/4;
+            //engine.stairs->x = 2 * w2 - 1 + width/4;
+            //engine.stairs->y = 2 * h2 + height/4;
+
+            // set the exits
+            for (Object **iterator = engine.exits.begin(); iterator != engine.exits.end(); iterator++) {
+                Object *exit = *iterator;
+                printf("roomID = %d, exitx = %d, exity = %d\n", engine.roomID, exit->x, exit->y);
+                map->setProperties(exit->x, exit->y, true, true);
+            }
 
             int sz = m.floor_tiles.size();
             int index = rng->getInt(0, sz - 1);

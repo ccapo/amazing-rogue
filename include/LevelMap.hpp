@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <deque>
 #include <random>
 
@@ -48,6 +48,8 @@ public:
 
   void create();
   void save();
+
+  std::unordered_map<int, LevelData> levelHash;
 };
 
 #endif

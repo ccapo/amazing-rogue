@@ -138,11 +138,11 @@ void Maze::createMaze() {
   // Exits
   int x = 1, y = 0;
   int offset = x + y*width;
-  maze_tiles[offset] = PATH;
+  maze_tiles[offset] = FLOOR;
   x = 2 * nx - 1;
   y = 2 * ny;
   offset = x + y*width;
-  maze_tiles[offset] = PATH;
+  maze_tiles[offset] = FLOOR;
 }
 
 void Maze::saveMaze() {

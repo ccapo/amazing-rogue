@@ -76,8 +76,13 @@ void PlayerAi::update(Object *owner) {
 
     if (dx != 0 || dy != 0) {
         engine.gameStatus=Engine::NEW_TURN;
-        if (engine.map->isExit(owner->x+dx,owner->y+dy)) {
-            printf("Exiting Room\n");
+        Object *exit = engine.getExit(owner->x + dx, owner->y + dy);
+        printf("x = %d, y = %d, dx = %d, dy = %d => xe = %d, ye = %d\n", owner->x, owner->y, dx, dy, owner->x+dx, owner->y+dy);
+        if (exit) {
+            printf("Exiting Room: %d, Entering Room: %d\n", engine.roomID, exit->connectedID);
+            engine.nextRoom(exit->connectedID);
+            engine.map->computeFov();
+            return;
         }
         if (moveOrAttack(owner, owner->x+dx,owner->y+dy)) {
             engine.map->computeFov();

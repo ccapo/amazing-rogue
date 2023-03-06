@@ -2,7 +2,7 @@
 #include "main.hpp"
 
 Object::Object(int x, int y, int ch, const char *name, const TCODColor &col) :
-    x(x), y(y), ch(ch), colour(col), name(name), blocks(true), entity(NULL), item(NULL), container(NULL) {
+    x(x), y(y), ch(ch), colour(col), name(name), blocks(true), entity(NULL), item(NULL), container(NULL), connectedID(-1) {
 }
 
 Object::~Object() {

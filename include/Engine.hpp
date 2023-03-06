@@ -10,13 +10,14 @@ public :
     Object *player;
     Object *stairs;
     TCODList<LevelMap *> levelMaps;
+    TCODList<Object *> exits;
     Map *map;
     Gui *gui;
     bool computeFov;
     int fovRadius;
     int screenWidth;
     int screenHeight;
-    int level;
+    int level, roomID;
     TCOD_mouse_t mouse;
     TCOD_key_t lastKey;
  
@@ -28,9 +29,11 @@ public :
     void update();
     void render();
     void nextLevel();
+    void nextRoom(int destID);
     void sendToBack(Object *object);
     Object *getClosestMonster(int x, int y, float range) const;
     Object *getObject(int x, int y) const;
+    Object *getExit(int x, int y) const;
 
     enum GameStatus {
         STARTUP,

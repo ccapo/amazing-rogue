@@ -8,6 +8,7 @@ public:
     Entity *entity; // Something that can interact with its environment
     Item *item; // Something that can be used
     Container *container; // something that can contain objects
+    int connectedID; // for an exit, which room is it connected
 
     Object(int x, int y, int ch, const char *name, const TCODColor &col);
     virtual ~Object();

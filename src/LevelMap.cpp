@@ -119,8 +119,7 @@ void LevelMap::connect_cells() {
   //                              N,  W,  E, S
   const int doff[NBORDER] = {-width, -1, +1, +width};
   const int db[NBOX] = {-width - 1, -width + 0, -width + 1, -1,  0, +1, +width - 1, +width + 0, +width + 1};
-  std::map<int, LevelData> mapRooms;
-  std::map<int,int> offset_lut;
+  std::unordered_map<int,int> offset_lut;
 
   for(int offset = 0; offset < levelData.size(); offset++) {
     LevelData md = levelData[offset];
@@ -131,7 +130,7 @@ void LevelMap::connect_cells() {
           md.directions.push_back(i);
         }
       }
-      mapRooms[md.id] = md;
+      levelHash[md.id] = md;
     }
   }
 
@@ -145,17 +144,17 @@ void LevelMap::connect_cells() {
   // Map of rooms in order they were created
   //printf("Level = %d\n", level + 1);
   offset_lut[0] = width/2 + (height/2)*width;
-  for(std::map<int,LevelData>::iterator it=mapRooms.begin(); it!=mapRooms.end(); ++it) {
+  for(std::unordered_map<int,LevelData>::iterator it=levelHash.begin(); it!=levelHash.end(); ++it) {
     char value = ROOM;
     int offset = width/2 + (height/2)*width;
     bool visible = true;
-    std::map<int,LevelData>::iterator findit = mapRooms.find(it->first);
-    if (findit != mapRooms.end()) {
+    std::unordered_map<int,LevelData>::iterator findit = levelHash.find(it->first);
+    if (findit != levelHash.end()) {
       offset = offset_lut[it->first];
     } else {
       continue;
     }
-    if(it == mapRooms.begin() || std::next(it) == mapRooms.end()) {
+    if(it == levelHash.begin() || std::next(it) == levelHash.end()) {
       value = START;
     }
 
