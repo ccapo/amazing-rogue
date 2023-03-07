@@ -29,7 +29,7 @@ void Gui::render() {
     PlayerAi *ai=(PlayerAi *)engine.player->entity->ai;
     char xpTxt[128];
     sprintf(xpTxt,"XP(%d)",ai->xpLevel);
-    renderBar(1,5,BAR_WIDTH,xpTxt,engine.player->entity->xp,
+    renderBar(1,3,BAR_WIDTH,xpTxt,engine.player->entity->xp,
         ai->getNextLevelXp(),
         TCODColor::lightViolet,TCODColor::darkerViolet);
 
@@ -51,7 +51,7 @@ void Gui::render() {
 
     // dungeon level
     con->setDefaultForeground(TCODColor::white);
-    con->print(3,3,"Dungeon Level %d",engine.level + 1);
+    con->print(1,5,"Lvl %d",engine.level + 1);
 
     // blit the GUI console on the root console
     TCODConsole::blit(con,0,0,engine.screenWidth,PANEL_HEIGHT,TCODConsole::root,0,engine.screenHeight-PANEL_HEIGHT);
