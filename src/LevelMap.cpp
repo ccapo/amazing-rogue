@@ -3,9 +3,9 @@
 LevelMap::LevelMap(int l): width(52), height(52), mapID(0), level(l), ncells(0), restartCount(0), exitPlaced(false) {
   rng = std::mt19937(rdev());
   dist = std::uniform_int_distribution<std::mt19937::result_type>(1, 100);
-  LevelData md;
+  LevelData ld;
   for (int i = 0; i < width * height; i++) {
-    levelData.push_back(md);
+    levelData.push_back(ld);
   }
   minCells = 4*(level + 1);
   maxCells = minCells + 2;
@@ -57,9 +57,9 @@ void LevelMap::init() {
   cellQueue.clear();
   endCells.clear();
   levelData.clear();
-  LevelData md;
+  LevelData ld;
   for(int i = 0; i < width*height; i++) {
-    levelData.push_back(md);
+    levelData.push_back(ld);
   }
 
   int offset = width/2 + (height/2)*width;
@@ -122,23 +122,23 @@ void LevelMap::connect_cells() {
   std::unordered_map<int,int> offset_lut;
 
   for(int offset = 0; offset < levelData.size(); offset++) {
-    LevelData md = levelData[offset];
-    if(md.occupied) {
+    LevelData ld = levelData[offset];
+    if(ld.occupied) {
       for(int i = 0; i < NBORDER; i++) {
-        if(levelData[offset + doff[i]].occupied && md.id < levelData[offset + doff[i]].id) {
-          md.connections.push_back(levelData[offset + doff[i]].id);
-          md.directions.push_back(i);
+        if(levelData[offset + doff[i]].occupied && ld.id < levelData[offset + doff[i]].id) {
+          ld.connections.push_back(levelData[offset + doff[i]].id);
+          ld.directions.push_back(i);
         }
       }
-      levelHash[md.id] = md;
+      levelHash[ld.id] = ld;
     }
   }
 
   levelData.clear();
   levelData.resize(width*height);
-  LevelData md;
+  LevelData ld;
   for(int i = 0; i < width*height; i++) {
-    levelData.push_back(md);
+    levelData.push_back(ld);
   }
 
   // Map of rooms in order they were created

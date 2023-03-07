@@ -1,6 +1,6 @@
 #include "main.hpp"
 
-Engine engine(86,53);
+Engine engine(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 int main() {
    engine.load();

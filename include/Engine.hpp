@@ -1,5 +1,11 @@
 #include "libtcod.hpp"
 
+#define SCREEN_WIDTH  (86)
+#define SCREEN_HEIGHT (53)
+#define MAP_WIDTH (SCREEN_WIDTH)
+#define MAP_HEIGHT (SCREEN_HEIGHT - PANEL_HEIGHT)
+#define LEVELMAX (2)
+
 class Object;
 class Map;
 class LevelMap;
@@ -29,7 +35,7 @@ public :
     void update();
     void render();
     void nextLevel();
-    void nextRoom(int destID);
+    void nextRoom(int destID, int type);
     void sendToBack(Object *object);
     Object *getClosestMonster(int x, int y, float range) const;
     Object *getObject(int x, int y) const;

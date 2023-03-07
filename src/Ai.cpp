@@ -15,6 +15,7 @@ int PlayerAi::getNextLevelXp() {
 static const int TRACKING_TURNS=3;
 
 void PlayerAi::update(Object *owner) {
+    TCODRandom *rng = TCODRandom::getInstance();
     int levelUpXp = getNextLevelXp();
     if ( owner->entity->xp >= levelUpXp ) {
         xpLevel++;
@@ -77,10 +78,8 @@ void PlayerAi::update(Object *owner) {
     if (dx != 0 || dy != 0) {
         engine.gameStatus=Engine::NEW_TURN;
         Object *exit = engine.getExit(owner->x + dx, owner->y + dy);
-        printf("x = %d, y = %d, dx = %d, dy = %d => xe = %d, ye = %d\n", owner->x, owner->y, dx, dy, owner->x+dx, owner->y+dy);
         if (exit) {
-            printf("Exiting Room: %d, Entering Room: %d\n", engine.roomID, exit->connectedID);
-            engine.nextRoom(exit->connectedID);
+            engine.nextRoom(exit->connectedID, rng->getInt(0, 1));
             engine.map->computeFov();
             return;
         }

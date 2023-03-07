@@ -2,7 +2,7 @@
 #include "main.hpp"
 #include <SDL2/SDL.h>
 
-Engine::Engine(int screenWidth, int screenHeight): gameStatus(STARTUP), renderMode(DEFAULT), fovRadius(10), screenWidth(screenWidth),screenHeight(screenHeight),level(1),roomID(0) {
+Engine::Engine(int screenWidth, int screenHeight): gameStatus(STARTUP), renderMode(DEFAULT), fovRadius(10), screenWidth(screenWidth),screenHeight(screenHeight),level(0),roomID(0) {
     TCODConsole::setCustomFont("data/fonts/arial10x10.png", TCOD_FONT_LAYOUT_TCOD | TCOD_FONT_TYPE_GREYSCALE, 32, 8);
     TCODConsole::initRoot(screenWidth,screenHeight,"Amazing Rogue",false);
     gui = new Gui();
@@ -23,7 +23,7 @@ void Engine::init() {
     stairs->blocks=false;
     objects.push(stairs);
     // TODO: Put in a separate thread
-    for (int l = 0; l < 2; l++) {
+    for (int l = 0; l < LEVELMAX; l++) {
         LevelMap *lm = new LevelMap(l);
         lm->create();
 #ifdef DEBUG
@@ -31,32 +31,30 @@ void Engine::init() {
 #endif
         levelMaps.push(lm);
     }
-    printf("roomID = %d\n", roomID);
-    for(int i = 0; i < levelMaps.get(level - 1)->levelHash[roomID].connections.size(); i++) {
-        int c = levelMaps.get(level - 1)->levelHash[roomID].connections[i];
-        int d = levelMaps.get(level - 1)->levelHash[roomID].directions[i];
-        printf("connectedID = %d, direction = %d\n", c, d);
+    for(int i = 0; i < levelMaps.get(level)->levelHash[roomID].connections.size(); i++) {
+        int c = levelMaps.get(level)->levelHash[roomID].connections[i];
+        int d = levelMaps.get(level)->levelHash[roomID].directions[i];
         int xe, ye;
         switch (d) {
         case 0:
             // North
             xe = screenWidth/2;
-            ye = (screenHeight - 7)/4 - 1;
+            ye = (screenHeight - PANEL_HEIGHT)/4;
             break;
         case 1:
             // West
-            xe = screenWidth/4 - 1;
-            ye = (screenHeight - 7)/2;
+            xe = screenWidth/4;
+            ye = (screenHeight - PANEL_HEIGHT)/2;
             break;
         case 2:
             // East
             xe = 3*screenWidth/4;
-            ye = (screenHeight - 7)/2;
+            ye = (screenHeight - PANEL_HEIGHT)/2;
             break;
         case 3:
             // South
             xe = screenWidth/2;
-            ye = 3*(screenHeight - 7)/4;
+            ye = 3*(screenHeight - PANEL_HEIGHT)/4;
             break;
         }
         Object *exit = new Object(xe, ye, ' ', "exit", TCODColor::white);
@@ -64,8 +62,8 @@ void Engine::init() {
         exit->connectedID = c;
         exits.push(exit);
     }
-    map = new Map(86,46);
-    map->init(true);
+    map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
+    map->init(0, true);
     gui->message(TCODColor::red, "Welcome to Amazing Rogue!\nPrepare to perish in the Labyrinth of the Minotaur.");
     gameStatus=STARTUP;
 }
@@ -121,13 +119,6 @@ void Engine::render() {
         }
     }
 
-    for (Object **iterator = exits.begin(); iterator != exits.end(); iterator++) {
-        Object *exit = *iterator;
-        if ( map->isInFov(exit->x, exit->y) ) {
-            exit->render();
-        }
-    }
-
     player->render();
     // show the player's stats
     gui->render();
@@ -144,8 +135,7 @@ Object *Engine::getClosestMonster(int x, int y, float range) const {
     for (Object **iterator=objects.begin();
         iterator != objects.end(); iterator++) {
         Object *object = *iterator;
-        if ( object != player && object->entity 
-            && !object->entity->isDead() ) {
+        if ( object != player && object->entity && !object->entity->isDead() ) {
             float distance=object->getDistance(x,y);
             if ( distance < bestDistance && ( distance <= range || range == 0.0f ) ) {
                 bestDistance=distance;
@@ -160,8 +150,7 @@ Object *Engine::getObject(int x, int y) const {
     for (Object **iterator=objects.begin();
         iterator != objects.end(); iterator++) {
         Object *object=*iterator;
-        if ( object->x == x && object->y ==y && object->entity
-            && ! object->entity->isDead()) {
+        if ( object->x == x && object->y ==y && object->entity && ! object->entity->isDead()) {
             return object;
         }
     }
@@ -183,22 +172,15 @@ void Engine::nextLevel() {
     gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
     player->entity->heal(player->entity->maxHp/2);
     gui->message(TCODColor::red,"After a rare moment of peace, you descend\ndeeper into the heart of the dungeon...");
-    delete map;
-    // delete all objects but player and stairs
-    for (Object **it=objects.begin(); it!=objects.end(); it++) {
-        if ( *it != player && *it != stairs ) {
-            delete *it;
-            it = objects.remove(it);
-        }
-    }
-    // create a new map
-    map = new Map(86,46);
-    map->init(true);
+
+    nextRoom(0, 0);
+
     gameStatus = STARTUP;
 }
 
-void Engine::nextRoom(int destID) {
+void Engine::nextRoom(int destID, int type) {
     roomID = destID;
+
     delete map;
     // delete all objects but player and stairs
     for (Object **it = objects.begin(); it != objects.end(); it++) {
@@ -207,45 +189,84 @@ void Engine::nextRoom(int destID) {
             it = objects.remove(it);
         }
     }
-
     exits.clearAndDelete();
-    printf("roomID = %d\n", roomID);
-    for(int i = 0; i < levelMaps.get(level - 1)->levelHash[roomID].connections.size(); i++) {
-        int c = levelMaps.get(level - 1)->levelHash[roomID].connections[i];
-        int d = levelMaps.get(level - 1)->levelHash[roomID].directions[i];
-        printf("connectedID = %d, direction = %d\n", c, d);
+
+    if(level < LEVELMAX) {
+        if(levelMaps.get(level)->levelHash[roomID].connections.size() == 0) {
+            if(type == 0) {
+                stairs->x = screenWidth/2;
+                stairs->y = 5*(screenHeight - PANEL_HEIGHT)/8;
+            } else {
+                stairs->x = 3*screenWidth/4 - 2;
+                stairs->y = 3*(screenHeight - PANEL_HEIGHT)/4 - 1;
+            }
+            map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
+            map->init(type, true);
+            gameStatus = STARTUP;
+            return;
+        } else {
+            stairs->x = -1;
+            stairs->y = -1;
+        }
+    } else {
+        stairs->x = -1;
+        stairs->y = -1;
+    }
+
+    for(int i = 0; i < levelMaps.get(level)->levelHash[roomID].connections.size(); i++) {
+        int c = levelMaps.get(level)->levelHash[roomID].connections[i];
+        int d = levelMaps.get(level)->levelHash[roomID].directions[i];
         int xe, ye;
         switch (d) {
         case 0:
             // North
-            xe = screenWidth/2;
-            ye = (screenHeight - 7)/4;
+            if(type == 0) {
+                xe = screenWidth/2;
+                ye = (screenHeight - PANEL_HEIGHT)/4;
+            } else {
+                xe = 3*screenWidth/4 - 2;
+                ye = 3*(screenHeight - PANEL_HEIGHT)/4 - 1;
+            }
             break;
         case 1:
             // West
-            xe = screenWidth/4;
-            ye = (screenHeight - 7)/2;
+            if(type == 0) {
+                xe = screenWidth/4;
+                ye = (screenHeight - PANEL_HEIGHT)/2;
+            } else {
+                xe = 3*screenWidth/4 - 2;
+                ye = 3*(screenHeight - PANEL_HEIGHT)/4 - 1;
+            }
             break;
         case 2:
             // East
-            xe = 3*screenWidth/4;
-            ye = (screenHeight - 7)/2;
+            if(type == 0) {
+                xe = 3*screenWidth/4;
+                ye = (screenHeight - PANEL_HEIGHT)/2;
+            } else {
+                xe = 3*screenWidth/4 - 2;
+                ye = 3*(screenHeight - PANEL_HEIGHT)/4 - 1;
+            }
             break;
         case 3:
             // South
-            xe = screenWidth/2;
-            ye = 3*(screenHeight - 7)/4;
+            if(type == 0) {
+                xe = screenWidth/2;
+                ye = 3*(screenHeight - PANEL_HEIGHT)/4;
+            } else {
+                xe = 3*screenWidth/4 - 2;
+                ye = 3*(screenHeight - PANEL_HEIGHT)/4 - 1;
+            }
             break;
         }
-        printf("xe = %d, ye = %d\n", xe, ye);
-        Object *exit = new Object(xe, ye, 'E', "exit", TCODColor::red);
+        Object *exit = new Object(xe, ye, ' ', "exit", TCODColor::white);
         exit->blocks = false;
         exit->connectedID = c;
         exits.push(exit);
     }
 
     // create a new map
-    map = new Map(86,46);
-    map->init(true);
+    map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
+    map->init(type, true);
     gameStatus = NEW_TURN;
 }

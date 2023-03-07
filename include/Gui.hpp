@@ -1,3 +1,5 @@
+#define PANEL_HEIGHT (7)
+
 class Menu {
 public :
     enum MenuItemCode {

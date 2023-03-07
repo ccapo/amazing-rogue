@@ -9,13 +9,11 @@ Map::Map(int width, int height) : width(width),height(height) {
     seed=TCODRandom::getInstance()->getInt(0,0x7FFFFFFF);
 }
 
-void Map::init(bool withObjects) {
-    static int type = 0;
+void Map::init(int type, bool withObjects) {
     rng = new TCODRandom(seed, TCOD_RNG_CMWC);
     tiles = new Tile[width*height];
     map = new TCODMap(width,height);
     makeRoom(type);
-    type = 1 - type;
 }
 
 Map::~Map() {
@@ -75,10 +73,9 @@ void Map::render() const {
 void Map::makeRoom(int type) {
     switch(type) {
         case 0: {
-            std::vector<int> offsets;
             // Standard Room
-            for (int x = width/4; x < 3*width/4; x++) {
-                for (int y = height/4; y < 3*height/4; y++) {
+            for (int x = width/4 + 1; x < 3*width/4; x++) {
+                for (int y = height/4 + 1; y < 3*height/4; y++) {
                     map->setProperties(x, y, true, true);
                 }
             }
@@ -109,6 +106,7 @@ void Map::makeRoom(int type) {
             map->setProperties(xc, yc - 1, false, false);
             map->setProperties(xc - 1, yc - 1, false, false);
 
+            std::vector<int> offsets;
             for (int x = width/4; x < 3*width/4; x++) {
                 for (int y = height/4; y < 3*height/4; y++) {
                     if (canWalk(x, y)) {
@@ -175,7 +173,6 @@ void Map::makeRoom(int type) {
             // set the exits
             for (Object **iterator = engine.exits.begin(); iterator != engine.exits.end(); iterator++) {
                 Object *exit = *iterator;
-                printf("roomID = %d, exitx = %d, exity = %d\n", engine.roomID, exit->x, exit->y);
                 map->setProperties(exit->x, exit->y, true, true);
             }
 

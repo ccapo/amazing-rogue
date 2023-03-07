@@ -18,7 +18,7 @@
 struct LevelData {
   char value;
   bool occupied, visible;
-  int id;
+  int id, type;
   std::vector<int> connections;
   std::vector<int> directions;
   LevelData(): value(EMPTY), occupied(false), visible(false), id(-1) {}

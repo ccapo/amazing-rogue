@@ -2,7 +2,6 @@
 #include <stdarg.h>
 #include "main.hpp"
 
-static const int PANEL_HEIGHT=7;
 static const int BAR_WIDTH=20;
 static const int MSG_X=BAR_WIDTH+2;
 static const int MSG_HEIGHT=PANEL_HEIGHT-1;
@@ -52,7 +51,7 @@ void Gui::render() {
 
     // dungeon level
     con->setDefaultForeground(TCODColor::white);
-    con->print(3,3,"Dungeon Level %d",engine.level);
+    con->print(3,3,"Dungeon Level %d",engine.level + 1);
 
     // blit the GUI console on the root console
     TCODConsole::blit(con,0,0,engine.screenWidth,PANEL_HEIGHT,TCODConsole::root,0,engine.screenHeight-PANEL_HEIGHT);

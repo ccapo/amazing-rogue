@@ -18,7 +18,7 @@ public :
    void computeFov();
    void render() const;
 
-   void init(bool withObjects);
+   void init(int type, bool withObjects);
 protected :
    Tile *tiles;
    TCODMap *map;
