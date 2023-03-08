@@ -31,7 +31,7 @@ int Entity::damage(Object *owner, float damage) {
             die(owner);
         }
     } else {
-        damage=0;
+        damage = 0;
     }
     return damage;
 }

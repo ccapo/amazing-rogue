@@ -144,7 +144,7 @@ void LevelMap::connect_cells() {
   // Map of rooms in order they were created
   //printf("Level = %d\n", level + 1);
   offset_lut[0] = width/2 + (height/2)*width;
-  for(std::unordered_map<int,LevelData>::iterator it=levelHash.begin(); it!=levelHash.end(); ++it) {
+  for(std::unordered_map<int,LevelData>::iterator it = levelHash.begin(); it!=levelHash.end(); ++it) {
     char value = ROOM;
     int offset = width/2 + (height/2)*width;
     bool visible = true;

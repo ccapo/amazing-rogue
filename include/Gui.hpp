@@ -17,7 +17,7 @@ public :
     ~Menu();
     void clear();
     void addItem(MenuItemCode code, const char *label);
-    MenuItemCode pick(DisplayMode mode=MAIN);
+    MenuItemCode pick(DisplayMode mode = MAIN);
 protected :
     struct MenuItem {
         MenuItemCode code;
@@ -37,6 +37,7 @@ public :
 
 protected :
     TCODConsole *con;
+    TCODConsole *status;
     struct Message {
         char *text;
         TCODColor col;

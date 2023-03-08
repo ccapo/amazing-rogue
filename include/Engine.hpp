@@ -35,7 +35,7 @@ public :
     void update();
     void render();
     void nextLevel();
-    void nextRoom(int destID, int type);
+    void nextRoom(int destID, int type, bool reset);
     void sendToBack(Object *object);
     Object *getClosestMonster(int x, int y, float range) const;
     Object *getObject(int x, int y) const;

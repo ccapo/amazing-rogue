@@ -6,14 +6,14 @@ static const int MAX_ROOM_MONSTERS = 3;
 static const int MAX_ROOM_ITEMS = 2;
 
 Map::Map(int width, int height) : width(width),height(height) {
-    seed=TCODRandom::getInstance()->getInt(0,0x7FFFFFFF);
+    seed = TCODRandom::getInstance()->getInt(0,0x7FFFFFFF);
 }
 
-void Map::init(int type, bool withObjects) {
+void Map::init(int type, bool reset, bool withObjects) {
     rng = new TCODRandom(seed, TCOD_RNG_CMWC);
     tiles = new Tile[width*height];
     map = new TCODMap(width,height);
-    makeRoom(type);
+    makeRoom(type, reset);
 }
 
 Map::~Map() {
@@ -34,33 +34,70 @@ bool Map::isInFov(int x, int y) const {
         return false;
     }
     if ( map->isInFov(x,y) ) {
-        tiles[x+y*width].explored=true;
+        tiles[x+y*width].explored = true;
         return true;
     }
     return false;
 }
 
+float Map::getScent(int x, int y) const {
+    return tiles[x + y*width].scent;
+}
+
 void Map::computeFov() {
     map->computeFov(engine.player->x,engine.player->y,engine.fovRadius);
+
+    const int dx[8] = {-1, 0, 1, -1, 1, -1, 0, 1};
+    const int dy[8] = {-1, -1, -1, 0, 0, 1, 1, 1};
+    const double dcoef = 1.0/8.0, lambda = 1.0;
+
+    int offset = engine.player->x + width*engine.player->y;
+    tiles[offset].scentPrev = 1.0f;
+
+    for(int x = 1; x < width - 2; x++) {
+        for(int y = 1; y < height - 2; y++) {
+            offset = x + y*width;
+            if( map->isWalkable(x, y) ) {
+                double sdiff = 0.0f;
+                for(int z = 0; z < 8; z++) {
+                    int doffset = x + dx[z] + (y + dy[z])*width;
+                    sdiff += tiles[doffset].scentPrev - tiles[offset].scentPrev;
+                }
+                tiles[offset].scent = lambda*(tiles[offset].scentPrev + dcoef*sdiff);
+            } else {
+                tiles[offset].scent = 0.0;
+            }
+        }
+    }
+
+    for(int x = 1; x < width - 2; x++) {
+        for(int y = 1; y < height - 2; y++) {
+            offset = x + width*y;
+            tiles[offset].scentPrev = tiles[offset].scent;
+        }
+    }
 }
 
 void Map::render() const {
     static const TCODColor darkWall(0,0,100);
     static const TCODColor darkGround(50,50,150);
-
     static const TCODColor lightWall(130,110,50);
     static const TCODColor lightGround(200,180,50);
 
     for (int x = 0; x < width; x++) {
         for (int y = 0; y < height; y++) {
+            float scent = getScent(x, y);
             if ( isInFov(x, y) ) {
-                TCODColor col = isWall(x, y) ? lightWall : lightGround;
+                TCODColor base = isWall(x, y) ? lightWall : lightGround;
                 if (engine.renderMode == Engine::TARGET) {
-                    col = col * 1.25f;
+                    base = base * 1.25f;
                 }
-                TCODConsole::root->setCharBackground(x, y, col);
+                //TCODColor final = TCODColor::lerp(base, TCODColor::darkestGreen, scent);
+                TCODConsole::root->setCharBackground(x, y, base);
             } else if ( isExplored(x, y) ) {
-                TCODConsole::root->setCharBackground(x, y, isWall(x, y) ? darkWall : darkGround);
+                TCODColor base = isWall(x, y) ? darkWall : darkGround;
+                //TCODColor final = TCODColor::lerp(base, TCODColor::darkestGreen, scent);
+                TCODConsole::root->setCharBackground(x, y, base);
             }
         }
     }
@@ -70,7 +107,11 @@ void Map::render() const {
     }
 }
 
-void Map::makeRoom(int type) {
+void Map::makeRoom(int type, bool reset) {
+    static bool first = true;
+
+    if (reset) first = true;
+
     switch(type) {
         case 0: {
             // Standard Room
@@ -80,31 +121,190 @@ void Map::makeRoom(int type) {
                 }
             }
 
-            // Add some pillars
-            int xc = 3*width/8;
-            int yc = 3*height/8;
-            map->setProperties(xc, yc, false, false);
-            map->setProperties(xc + 1, yc, false, false);
-            map->setProperties(xc, yc + 1, false, false);
-            map->setProperties(xc + 1, yc + 1, false, false);
-            xc = 3*width/8;
-            yc = 5*height/8;
-            map->setProperties(xc, yc, false, false);
-            map->setProperties(xc + 1, yc, false, false);
-            map->setProperties(xc, yc - 1, false, false);
-            map->setProperties(xc + 1, yc - 1, false, false);
-            xc = 5*width/8;
-            yc = 3*height/8;
-            map->setProperties(xc, yc, false, false);
-            map->setProperties(xc - 1, yc, false, false);
-            map->setProperties(xc, yc + 1, false, false);
-            map->setProperties(xc - 1, yc + 1, false, false);
-            xc = 5*width/8;
-            yc = 5*height/8;
-            map->setProperties(xc, yc, false, false);
-            map->setProperties(xc - 1, yc, false, false);
-            map->setProperties(xc, yc - 1, false, false);
-            map->setProperties(xc - 1, yc - 1, false, false);
+            int subtype = rng->getInt(0, 2);
+            if (first) {
+                first = false;
+                subtype = 0;
+            }
+            switch (subtype) {
+                case 0: {
+                    // Add some pillars
+                    int xc = 3*width/8;
+                    int yc = 3*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc + 1, yc, false, false);
+                    map->setProperties(xc, yc + 1, false, false);
+                    map->setProperties(xc + 1, yc + 1, false, false);
+                    xc = 3*width/8;
+                    yc = 5*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc + 1, yc, false, false);
+                    map->setProperties(xc, yc - 1, false, false);
+                    map->setProperties(xc + 1, yc - 1, false, false);
+                    xc = 5*width/8;
+                    yc = 3*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc - 1, yc, false, false);
+                    map->setProperties(xc, yc + 1, false, false);
+                    map->setProperties(xc - 1, yc + 1, false, false);
+                    xc = 5*width/8;
+                    yc = 5*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc - 1, yc, false, false);
+                    map->setProperties(xc, yc - 1, false, false);
+                    map->setProperties(xc - 1, yc - 1, false, false);
+
+                    // Put the player in the middle of the room
+                    engine.player->x = width/2;
+                    engine.player->y = height/2;
+                    break;
+                }
+                case 1: {
+                    // Add some pillars
+                    int xc = 3*width/8;
+                    int yc = 3*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc + 1, yc, false, false);
+                    map->setProperties(xc, yc + 1, false, false);
+                    map->setProperties(xc + 1, yc + 1, false, false);
+                    xc = 3*width/8;
+                    yc = 5*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc + 1, yc, false, false);
+                    map->setProperties(xc, yc - 1, false, false);
+                    map->setProperties(xc + 1, yc - 1, false, false);
+                    xc = 5*width/8;
+                    yc = 3*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc - 1, yc, false, false);
+                    map->setProperties(xc, yc + 1, false, false);
+                    map->setProperties(xc - 1, yc + 1, false, false);
+                    xc = 5*width/8;
+                    yc = 5*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc - 1, yc, false, false);
+                    map->setProperties(xc, yc - 1, false, false);
+                    map->setProperties(xc - 1, yc - 1, false, false);
+
+                    // Add a hole
+                    xc = width/2;
+                    yc = height/2;
+                    map->setProperties(xc - 2, yc - 2, true, false);
+                    map->setProperties(xc - 1, yc - 2, true, false);
+                    map->setProperties(xc + 0, yc - 2, true, false);
+                    map->setProperties(xc + 1, yc - 2, true, false);
+                    map->setProperties(xc + 2, yc - 2, true, false);
+
+                    map->setProperties(xc - 2, yc - 1, true, false);
+                    map->setProperties(xc - 1, yc - 1, true, false);
+                    map->setProperties(xc + 0, yc - 1, true, false);
+                    map->setProperties(xc + 1, yc - 1, true, false);
+                    map->setProperties(xc + 2, yc - 1, true, false);
+
+                    map->setProperties(xc - 2, yc + 0, true, false);
+                    map->setProperties(xc - 1, yc + 0, true, false);
+                    map->setProperties(xc + 0, yc + 0, true, false);
+                    map->setProperties(xc + 1, yc + 0, true, false);
+                    map->setProperties(xc + 2, yc + 0, true, false);
+
+                    map->setProperties(xc - 2, yc + 1, true, false);
+                    map->setProperties(xc - 1, yc + 1, true, false);
+                    map->setProperties(xc + 0, yc + 1, true, false);
+                    map->setProperties(xc + 1, yc + 1, true, false);
+                    map->setProperties(xc + 2, yc + 1, true, false);
+
+                    map->setProperties(xc - 2, yc + 2, true, false);
+                    map->setProperties(xc - 1, yc + 2, true, false);
+                    map->setProperties(xc + 0, yc + 2, true, false);
+                    map->setProperties(xc + 1, yc + 2, true, false);
+                    map->setProperties(xc + 2, yc + 2, true, false);
+
+                    // Put the player in the middle of the room
+                    engine.player->x = 1 + width/4;
+                    engine.player->y = height/2;
+                    break;
+
+                }
+                case 2: {
+                    // Add some pillars
+                    int xc = 3*width/8;
+                    int yc = 3*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc + 1, yc, false, false);
+                    map->setProperties(xc, yc + 1, false, false);
+                    map->setProperties(xc + 1, yc + 1, false, false);
+                    xc = 3*width/8;
+                    yc = 5*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc + 1, yc, false, false);
+                    map->setProperties(xc, yc - 1, false, false);
+                    map->setProperties(xc + 1, yc - 1, false, false);
+                    xc = 5*width/8;
+                    yc = 3*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc - 1, yc, false, false);
+                    map->setProperties(xc, yc + 1, false, false);
+                    map->setProperties(xc - 1, yc + 1, false, false);
+                    xc = 5*width/8;
+                    yc = 5*height/8;
+                    map->setProperties(xc, yc, false, false);
+                    map->setProperties(xc - 1, yc, false, false);
+                    map->setProperties(xc, yc - 1, false, false);
+                    map->setProperties(xc - 1, yc - 1, false, false);
+
+                    // Add holes
+                    xc = width/2;
+                    yc = height/2;
+                    map->setProperties(xc - 1, yc - 6, true, false);
+                    map->setProperties(xc + 0, yc - 6, true, false);
+                    map->setProperties(xc + 1, yc - 6, true, false);
+                    map->setProperties(xc - 1, yc - 5, true, false);
+                    map->setProperties(xc + 0, yc - 5, true, false);
+                    map->setProperties(xc + 1, yc - 5, true, false);
+                    map->setProperties(xc - 1, yc - 4, true, false);
+                    map->setProperties(xc + 0, yc - 4, true, false);
+                    map->setProperties(xc + 1, yc - 4, true, false);
+
+                    map->setProperties(xc - 6, yc - 1, true, false);
+                    map->setProperties(xc - 6, yc + 0, true, false);
+                    map->setProperties(xc - 6, yc + 1, true, false);
+                    map->setProperties(xc - 5, yc - 1, true, false);
+                    map->setProperties(xc - 5, yc + 0, true, false);
+                    map->setProperties(xc - 5, yc + 1, true, false);
+                    map->setProperties(xc - 4, yc - 1, true, false);
+                    map->setProperties(xc - 4, yc + 0, true, false);
+                    map->setProperties(xc - 4, yc + 1, true, false);
+
+                    map->setProperties(xc + 6, yc - 1, true, false);
+                    map->setProperties(xc + 6, yc + 0, true, false);
+                    map->setProperties(xc + 6, yc + 1, true, false);
+                    map->setProperties(xc + 5, yc - 1, true, false);
+                    map->setProperties(xc + 5, yc + 0, true, false);
+                    map->setProperties(xc + 5, yc + 1, true, false);
+                    map->setProperties(xc + 4, yc - 1, true, false);
+                    map->setProperties(xc + 4, yc + 0, true, false);
+                    map->setProperties(xc + 4, yc + 1, true, false);
+
+                    map->setProperties(xc - 1, yc + 6, true, false);
+                    map->setProperties(xc + 0, yc + 6, true, false);
+                    map->setProperties(xc + 1, yc + 6, true, false);
+                    map->setProperties(xc - 1, yc + 5, true, false);
+                    map->setProperties(xc + 0, yc + 5, true, false);
+                    map->setProperties(xc + 1, yc + 5, true, false);
+                    map->setProperties(xc - 1, yc + 4, true, false);
+                    map->setProperties(xc + 0, yc + 4, true, false);
+                    map->setProperties(xc + 1, yc + 4, true, false);
+
+                    // Put the player in the middle of the room
+                    engine.player->x = 1 + width/4;
+                    engine.player->y = height/2;
+                    break;
+                }
+                default: {
+                    printf("Unrecognized room subtype = %d\n", subtype);
+                    return;
+                }
+            }
 
             std::vector<int> offsets;
             for (int x = width/4; x < 3*width/4; x++) {
@@ -116,26 +316,18 @@ void Map::makeRoom(int type) {
                 }
             }
 
-            // put the player in the first room
-            engine.player->x = width/2;
-            engine.player->y = height/2;
-
-            // set stairs position
-            //engine.stairs->x = width/2;
-            //engine.stairs->y = 5*height/8;
-
             // set the exits
             for (Object **iterator = engine.exits.begin(); iterator != engine.exits.end(); iterator++) {
                 Object *exit = *iterator;
                 map->setProperties(exit->x, exit->y, true, true);
             }
 
-            int sz = offsets.size();
-            int index = rng->getInt(0, sz - 1);
-            int offset = offsets[index];
-            int cx = offset % width;
-            int cy = (offset - cx)/width;
-            addMonster(cx, cy);
+            // int sz = offsets.size();
+            // int index = rng->getInt(0, sz - 1);
+            // int offset = offsets[index];
+            // int cx = offset % width;
+            // int cy = (offset - cx)/width;
+            // addMonster(cx, cy);
             break;
         }
         case 1: {
@@ -166,23 +358,18 @@ void Map::makeRoom(int type) {
             engine.player->x = 1 + width/4;
             engine.player->y = 0 + height/4;
 
-            // set stairs position
-            //engine.stairs->x = 2 * w2 - 1 + width/4;
-            //engine.stairs->y = 2 * h2 + height/4;
-
             // set the exits
             for (Object **iterator = engine.exits.begin(); iterator != engine.exits.end(); iterator++) {
                 Object *exit = *iterator;
                 map->setProperties(exit->x, exit->y, true, true);
             }
 
-            int sz = m.floor_tiles.size();
-            int index = rng->getInt(0, sz - 1);
-            int offset = m.floor_tiles[index];
-            int cx = offset % (width/2) + width/4;
-            int cy = (offset - cx)/(width/2) + height/4;
-            addMonster(cx, cy);
-
+            // int sz = m.floor_tiles.size();
+            // int index = rng->getInt(0, sz - 1);
+            // int offset = m.floor_tiles[index];
+            // int cx = offset % (width/2) + width/4;
+            // int cy = (offset - cx)/(width/2) + height/4;
+            // addMonster(cx, cy);
             break;
         }
         default: {
@@ -202,12 +389,12 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withObject
        engine.player->y=(y1+y2)/2;
     } 
     else {
-        TCODRandom *rng=TCODRandom::getInstance();
+        TCODRandom *rng = TCODRandom::getInstance();
         // add monsters
-        int nbMonsters=rng->getInt(0,MAX_ROOM_MONSTERS);
+        int nbMonsters = rng->getInt(0,MAX_ROOM_MONSTERS);
         while (nbMonsters > 0) {
-            int x=rng->getInt(x1,x2);
-            int y=rng->getInt(y1,y2);
+            int x = rng->getInt(x1,x2);
+            int y = rng->getInt(y1,y2);
             if ( canWalk(x,y) ) {
                 addMonster(x,y);
             }
@@ -215,10 +402,10 @@ void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withObject
         }
 
         // add items
-        int nbItems=rng->getInt(0,MAX_ROOM_ITEMS);
+        int nbItems = rng->getInt(0,MAX_ROOM_ITEMS);
         while (nbItems > 0) {
-            int x=rng->getInt(x1,x2);
-            int y=rng->getInt(y1,y2);
+            int x = rng->getInt(x1,x2);
+            int y = rng->getInt(y1,y2);
             if ( canWalk(x,y) ) {
                 addItem(x,y);
             }
@@ -236,7 +423,7 @@ bool Map::canWalk(int x, int y) const {
         // this is a wall
         return false;
     }
-    for (Object **iterator=engine.objects.begin();
+    for (Object **iterator = engine.objects.begin();
         iterator!=engine.objects.end();iterator++) {
         Object *object=*iterator;
         if ( object->blocks && object->x == x && object->y == y ) {
@@ -248,7 +435,7 @@ bool Map::canWalk(int x, int y) const {
 }
 
 void Map::addMonster(int x, int y) {
-    TCODRandom *rng=TCODRandom::getInstance();
+    TCODRandom *rng = TCODRandom::getInstance();
     if ( rng->getInt(0,100) < 80 ) {
         // create an orc
         Object *orc = new Object(x,y,'o',"orc", TCODColor::desaturatedGreen);
@@ -265,31 +452,46 @@ void Map::addMonster(int x, int y) {
 }
 
 void Map::addItem(int x, int y) {
-    TCODRandom *rng=TCODRandom::getInstance();
+    TCODRandom *rng = TCODRandom::getInstance();
     int dice = rng->getInt(0,100);
     if ( dice < 70 ) {
         // create a health potion
-        Object *healthPotion=new Object(x,y,'!',"health potion",TCODColor::violet);
-        healthPotion->blocks=false;
-        healthPotion->item=new Healer(4);
+        Object *healthPotion = new Object(x,y,'!',"health potion",TCODColor::violet);
+        healthPotion->blocks = false;
+        healthPotion->item = new Healer(4);
         engine.objects.push(healthPotion);
     } else if ( dice < 70+10 ) {
         // create a scroll of lightning bolt 
-        Object *scrollOfLightningBolt=new Object(x,y,'#',"scroll of lightning bolt",TCODColor::lightYellow);
-        scrollOfLightningBolt->blocks=false;
-        scrollOfLightningBolt->item=new LightningBolt(5,20);
+        Object *scrollOfLightningBolt = new Object(x,y,'#',"scroll of lightning bolt",TCODColor::lightYellow);
+        scrollOfLightningBolt->blocks = false;
+        scrollOfLightningBolt->item = new LightningBolt(5,20);
         engine.objects.push(scrollOfLightningBolt);
     } else if ( dice < 70+10+10 ) {
         // create a scroll of fireball
-        Object *scrollOfFireball=new Object(x,y,'#',"scroll of fireball",TCODColor::lightRed);
-        scrollOfFireball->blocks=false;
-        scrollOfFireball->item=new Fireball(3,15);
+        Object *scrollOfFireball = new Object(x,y,'#',"scroll of fireball",TCODColor::lightRed);
+        scrollOfFireball->blocks = false;
+        scrollOfFireball->item = new Fireball(3,15);
         engine.objects.push(scrollOfFireball);
     } else {
         // create a scroll of confusion
-        Object *scrollOfConfusion=new Object(x,y,'#',"scroll of confusion",TCODColor::lightBlue);
-        scrollOfConfusion->blocks=false;
-        scrollOfConfusion->item=new Confuser(10,8);
+        Object *scrollOfConfusion = new Object(x,y,'#',"scroll of confusion",TCODColor::lightBlue);
+        scrollOfConfusion->blocks = false;
+        scrollOfConfusion->item = new Confuser(10,8);
         engine.objects.push(scrollOfConfusion);
     }
 }
+
+// void Map::moveDisplay(int x, int y) {
+//     // New display coordinates (top-left corner of the screen relative to the map)
+//     // Coordinates so that the target is at the center of the screen
+//     int cx = x - engine.displayWidth/2;
+//     int cy = y - engine.displayHeight/2;
+
+//     // Make sure the DISPLAY doesn't see outside the map
+//     if(cx < 0) cx = 0;
+//     if(cy < 0) cy = 0;
+//     if(cx > width - engine.displayWidth - 1) cx = width - engine.displayWidth - 1;
+//     if(cy > height - engine.displayHeight - 1) cy = height - engine.displayHeight - 1;
+
+//     display_x = cx; display_y = cy;
+// }

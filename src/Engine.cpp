@@ -20,7 +20,7 @@ void Engine::init() {
     player->container = new Container(12);
     objects.push(player);
     stairs = new Object(0,0,'>',"stairs",TCODColor::white);
-    stairs->blocks=false;
+    stairs->blocks = false;
     objects.push(stairs);
     // TODO: Put in a separate thread
     for (int l = 0; l < LEVELMAX; l++) {
@@ -63,9 +63,9 @@ void Engine::init() {
         exits.push(exit);
     }
     map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
-    map->init(0, true);
+    map->init(0, false, true);
     gui->message(TCODColor::red, "Welcome to Amazing Rogue!\nPrepare to perish in the Labyrinth of the Minotaur.");
-    gameStatus=STARTUP;
+    gameStatus = STARTUP;
 }
 
 void Engine::term() {
@@ -81,7 +81,7 @@ void Engine::load() {
     gui->menu.addItem(Menu::NEW_GAME,"New Game");
     gui->menu.addItem(Menu::EXIT,"Exit");
 
-    Menu::MenuItemCode menuItem=engine.gui->menu.pick();
+    Menu::MenuItemCode menuItem = engine.gui->menu.pick();
     if ( menuItem == Menu::EXIT || menuItem == Menu::NONE ) {
         // Exit or window closed
         exit(0);
@@ -94,11 +94,11 @@ void Engine::load() {
 
 void Engine::update() {
     if ( gameStatus == STARTUP ) map->computeFov();
-    gameStatus=IDLE;
+    gameStatus = IDLE;
     TCODSystem::checkForEvent(TCOD_EVENT_KEY_PRESS|TCOD_EVENT_MOUSE,&lastKey,&mouse);
     player->update();
     if ( gameStatus == NEW_TURN ) {
-        for (Object **iterator=objects.begin(); iterator != objects.end(); iterator++) {
+        for (Object **iterator = objects.begin(); iterator != objects.end(); iterator++) {
             Object *object = *iterator;
             if ( object != player ) {
                 object->update();
@@ -110,9 +110,10 @@ void Engine::update() {
 void Engine::render() {
     TCODConsole::root->clear();
     // draw the map
+    //map->moveDisplay(player->x, player->y);
     map->render();
     // draw the objects
-    for (Object **iterator=objects.begin(); iterator != objects.end(); iterator++) {
+    for (Object **iterator = objects.begin(); iterator != objects.end(); iterator++) {
         Object *object = *iterator;
         if ( map->isInFov(object->x, object->y) ) {
             object->render();
@@ -130,16 +131,16 @@ void Engine::sendToBack(Object *object) {
 }
 
 Object *Engine::getClosestMonster(int x, int y, float range) const {
-    Object *closest=NULL;
-    float bestDistance=1E6f;
-    for (Object **iterator=objects.begin();
+    Object *closest = NULL;
+    float bestDistance = 1E6f;
+    for (Object **iterator = objects.begin();
         iterator != objects.end(); iterator++) {
         Object *object = *iterator;
         if ( object != player && object->entity && !object->entity->isDead() ) {
-            float distance=object->getDistance(x,y);
+            float distance = object->getDistance(x,y);
             if ( distance < bestDistance && ( distance <= range || range == 0.0f ) ) {
-                bestDistance=distance;
-                closest=object;
+                bestDistance = distance;
+                closest = object;
             }
         }
     }
@@ -147,7 +148,7 @@ Object *Engine::getClosestMonster(int x, int y, float range) const {
 }
 
 Object *Engine::getObject(int x, int y) const {
-    for (Object **iterator=objects.begin();
+    for (Object **iterator = objects.begin();
         iterator != objects.end(); iterator++) {
         Object *object=*iterator;
         if ( object->x == x && object->y ==y && object->entity && ! object->entity->isDead()) {
@@ -169,16 +170,20 @@ Object *Engine::getExit(int x, int y) const {
 
 void Engine::nextLevel() {
     level++;
+    if(level >= LEVELMAX) {
+        printf("Congratulations, you have reached the end of the game!\n");
+        exit(0);
+    }
     gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
     player->entity->heal(player->entity->maxHp/2);
     gui->message(TCODColor::red,"After a rare moment of peace, you descend\ndeeper into the heart of the dungeon...");
 
-    nextRoom(0, 0);
+    nextRoom(0, 0, true);
 
     gameStatus = STARTUP;
 }
 
-void Engine::nextRoom(int destID, int type) {
+void Engine::nextRoom(int destID, int type, bool reset) {
     roomID = destID;
 
     delete map;
@@ -196,12 +201,16 @@ void Engine::nextRoom(int destID, int type) {
             if(type == 0) {
                 stairs->x = screenWidth/2;
                 stairs->y = 5*(screenHeight - PANEL_HEIGHT)/8;
+                // if (map->isWall(stairs->x, stairs->y)) {
+                //     stairs->x = screenWidth/2;
+                //     stairs->y = (screenHeight - PANEL_HEIGHT)/2;
+                // }
             } else {
                 stairs->x = 3*screenWidth/4 - 2;
                 stairs->y = 3*(screenHeight - PANEL_HEIGHT)/4 - 1;
             }
             map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
-            map->init(type, true);
+            map->init(type, reset, true);
             gameStatus = STARTUP;
             return;
         } else {
@@ -267,6 +276,6 @@ void Engine::nextRoom(int destID, int type) {
 
     // create a new map
     map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
-    map->init(type, true);
+    map->init(type, reset, true);
     gameStatus = NEW_TURN;
 }

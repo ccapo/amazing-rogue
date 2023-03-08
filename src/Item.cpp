@@ -21,8 +21,8 @@ void Item::drop(Object *owner, Object *wearer) {
     if ( wearer->container ) {
         wearer->container->remove(owner);
         engine.objects.push(owner);
-        owner->x=wearer->x;
-        owner->y=wearer->y;
+        owner->x = wearer->x;
+        owner->y = wearer->y;
         engine.gui->message(TCODColor::lightGrey,"%s drops a %s.",wearer->name,owner->name);
     }
 }
@@ -44,7 +44,7 @@ bool Healer::cast(int x, int y) { return false; }
 LightningBolt::LightningBolt(float range, float damage): range(range),damage(damage) {}
 
 bool LightningBolt::use(Object *owner, Object *wearer) {
-    Object *closestMonster=engine.getClosestMonster(wearer->x,wearer->y,range);
+    Object *closestMonster = engine.getClosestMonster(wearer->x,wearer->y,range);
     if (! closestMonster ) {
         engine.gui->message(TCODColor::lightGrey,"No enemy is close enough to strike.");
         return false;
@@ -75,7 +75,7 @@ bool Fireball::use(Object *owner, Object *wearer) {
 bool Fireball::cast(int x, int y) {
     // burn everything in <range> (including player)
     engine.gui->message(TCODColor::orange,"The fireball explodes, burning everything within %g tiles!",range);
-    for (Object **iterator=engine.objects.begin();
+    for (Object **iterator = engine.objects.begin();
         iterator != engine.objects.end(); iterator++) {
         Object *object=*iterator;
         if ( object->entity && !object->entity->isDead()
@@ -101,13 +101,13 @@ bool Confuser::use(Object *owner, Object *wearer) {
 }
 
 bool Confuser::cast(int x, int y) {
-    Object *object=engine.getObject(x,y);
+    Object *object = engine.getObject(x,y);
     if ( !object ) {
         return false;
     }
 
     // confuse the monster for <nbTurns> turns
-    Ai *confusedAi=new ConfusedMonsterAi(nbTurns, object->entity->ai);
+    Ai *confusedAi = new ConfusedMonsterAi(nbTurns, object->entity->ai);
     object->entity->ai = confusedAi;
     engine.gui->message(TCODColor::lightGreen,"The eyes of the %s look vacant,\nas he starts to stumble around!",
         object->name);
