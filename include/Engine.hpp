@@ -1,10 +1,10 @@
 #include "libtcod.hpp"
 
 #define SCREEN_WIDTH  (86)
-#define SCREEN_HEIGHT (53)
+#define SCREEN_HEIGHT (57)
 #define MAP_WIDTH (SCREEN_WIDTH)
 #define MAP_HEIGHT (SCREEN_HEIGHT - PANEL_HEIGHT)
-#define LEVELMAX (2)
+#define LEVELMAX (8)
 
 class Object;
 class Map;
@@ -13,10 +13,11 @@ class LevelMap;
 class Engine {
 public :
     TCODList<Object *> objects;
+    TCODList<Object *> exits;
+    static TCODList<LevelMap *> levelMaps;
+    static std::atomic<bool> levelMapsReady;
     Object *player;
     Object *stairs;
-    TCODList<LevelMap *> levelMaps;
-    TCODList<Object *> exits;
     Map *map;
     Gui *gui;
     bool computeFov;
@@ -40,6 +41,7 @@ public :
     Object *getClosestMonster(int x, int y, float range) const;
     Object *getObject(int x, int y) const;
     Object *getExit(int x, int y) const;
+    static void generateLevelMaps(std::atomic<bool> &levelMapsReady);
 
     enum GameStatus {
         STARTUP,

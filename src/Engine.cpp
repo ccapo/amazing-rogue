@@ -1,4 +1,7 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <atomic>
+#include <thread>
 #include "main.hpp"
 #include <SDL2/SDL.h>
 
@@ -15,22 +18,28 @@ Engine::~Engine() {
 
 void Engine::init() {
     player = new Object(0,0,'@',"player",TCODColor::black);
-    player->entity = new PlayerEntity(30,5,2,"your cadaver");
+    player->entity = new PlayerEntity(25,5,2,2,1,"your cadaver");
     player->entity->ai = new PlayerAi();
     player->container = new Container(12);
     objects.push(player);
     stairs = new Object(0,0,'>',"stairs",TCODColor::white);
     stairs->blocks = false;
     objects.push(stairs);
-    // TODO: Put in a separate thread
-    for (int l = 0; l < LEVELMAX; l++) {
-        LevelMap *lm = new LevelMap(l);
-        lm->create();
+
+    // Create first level map
+    LevelMap *lm = new LevelMap(0);
+    lm->create();
 #ifdef DEBUG
-        lm->save();
+    lm->save();
 #endif
-        levelMaps.push(lm);
-    }
+    levelMaps.push(lm);
+
+    // Launch a thread for generateLevelMaps
+    std::thread levelMapsThread(&generateLevelMaps, std::ref(levelMapsReady));
+
+    // Detach thread so that it does not block
+    levelMapsThread.detach();
+
     for(int i = 0; i < levelMaps.get(level)->levelHash[roomID].connections.size(); i++) {
         int c = levelMaps.get(level)->levelHash[roomID].connections[i];
         int d = levelMaps.get(level)->levelHash[roomID].directions[i];
@@ -71,6 +80,7 @@ void Engine::init() {
 void Engine::term() {
     objects.clearAndDelete();
     exits.clearAndDelete();
+    levelMaps.clearAndDelete();
     if ( map ) delete map;
     gui->clear();
 }
@@ -175,7 +185,7 @@ void Engine::nextLevel() {
         exit(0);
     }
     gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
-    player->entity->heal(player->entity->maxHp/2);
+    player->entity->heal(player->entity->hpmax/2);
     gui->message(TCODColor::red,"After a rare moment of peace, you descend\ndeeper into the heart of the dungeon...");
 
     nextRoom(0, 0, true);
@@ -184,6 +194,7 @@ void Engine::nextLevel() {
 }
 
 void Engine::nextRoom(int destID, int type, bool reset) {
+    int prevRoomID = roomID;
     roomID = destID;
 
     delete map;
@@ -201,16 +212,21 @@ void Engine::nextRoom(int destID, int type, bool reset) {
             if(type == 0) {
                 stairs->x = screenWidth/2;
                 stairs->y = 5*(screenHeight - PANEL_HEIGHT)/8;
-                // if (map->isWall(stairs->x, stairs->y)) {
-                //     stairs->x = screenWidth/2;
-                //     stairs->y = (screenHeight - PANEL_HEIGHT)/2;
-                // }
             } else {
                 stairs->x = 3*screenWidth/4 - 2;
                 stairs->y = 3*(screenHeight - PANEL_HEIGHT)/4 - 1;
             }
+            int prevOffset = levelMaps.get(level)->levelHash[prevRoomID].offset;
+            int offset = levelMaps.get(level)->levelHash[roomID].offset;
+            levelMaps.get(level)->levelData[prevOffset].active = false;
+            levelMaps.get(level)->levelData[offset].visible = true;
+            levelMaps.get(level)->levelData[offset].active = true;
             map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
             map->init(type, reset, true);
+            if (map->isWall(stairs->x, stairs->y)) {
+                stairs->x = screenWidth/2;
+                stairs->y = (screenHeight - PANEL_HEIGHT)/2;
+            }
             gameStatus = STARTUP;
             return;
         } else {
@@ -274,8 +290,32 @@ void Engine::nextRoom(int destID, int type, bool reset) {
         exits.push(exit);
     }
 
+    int prevOffset = levelMaps.get(level)->levelHash[prevRoomID].offset;
+    int offset = levelMaps.get(level)->levelHash[roomID].offset;
+    levelMaps.get(level)->levelData[prevOffset].active = false;
+    levelMaps.get(level)->levelData[offset].visible = true;
+    levelMaps.get(level)->levelData[offset].active = true;
+
     // create a new map
     map = new Map(screenWidth, screenHeight - PANEL_HEIGHT);
     map->init(type, reset, true);
     gameStatus = NEW_TURN;
 }
+
+// This function will be called from a thread
+void Engine::generateLevelMaps(std::atomic<bool> &levelMapsReady) {
+    printf("Generating other level maps\n");
+    for (int l = 1; l < LEVELMAX; l++) {
+        LevelMap *lm = new LevelMap(l);
+        lm->create();
+#ifdef DEBUG
+        lm->save();
+#endif
+        levelMaps.push(lm);
+    }
+    printf("Completed generating all other level maps!\n");
+    levelMapsReady = true;
+}
+
+std::atomic<bool> Engine::levelMapsReady(false);
+TCODList<LevelMap *> Engine::levelMaps;

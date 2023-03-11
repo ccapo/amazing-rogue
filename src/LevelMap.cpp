@@ -3,8 +3,9 @@
 LevelMap::LevelMap(int l): width(52), height(52), mapID(0), level(l), ncells(0), restartCount(0), exitPlaced(false) {
   rng = std::mt19937(rdev());
   dist = std::uniform_int_distribution<std::mt19937::result_type>(1, 100);
-  LevelData ld;
   for (int i = 0; i < width * height; i++) {
+    LevelData ld;
+    ld.offset = i;
     levelData.push_back(ld);
   }
   minCells = 4*(level + 1);
@@ -57,8 +58,9 @@ void LevelMap::init() {
   cellQueue.clear();
   endCells.clear();
   levelData.clear();
-  LevelData ld;
   for(int i = 0; i < width*height; i++) {
+    LevelData ld;
+    ld.offset = i;
     levelData.push_back(ld);
   }
 
@@ -67,7 +69,7 @@ void LevelMap::init() {
   ncells += 1;
   levelData[offset].occupied = true;
   levelData[offset].id = mapID++;
-  levelData[offset].value = START;
+  levelData[offset].value = ROOM;
 }
 
 void LevelMap::update(bool &started, bool &restart) {
@@ -96,34 +98,21 @@ void LevelMap::update(bool &started, bool &restart) {
     ncells += 1;
     levelData[offset].occupied = true;
     levelData[offset].id = mapID++;
-    levelData[offset].value = START;
+    levelData[offset].value = ROOM;
   } else {
     started = false;
   }
   return;
 }
 
-void LevelMap::display() {
-  // Display the layout
-  for(int y = 0; y < height; y++) {
-    for(int x = 0; x < width; x++) {
-      int o = x + y*width;
-      std::cout << levelData[o].value;
-    }
-    std::cout << std::endl;
-  }
-  std::cout << std::endl;
-}
-
-void LevelMap::connect_cells() {
+void LevelMap::connectCells() {
   //                              N,  W,  E, S
   const int doff[NBORDER] = {-width, -1, +1, +width};
-  const int db[NBOX] = {-width - 1, -width + 0, -width + 1, -1,  0, +1, +width - 1, +width + 0, +width + 1};
-  std::unordered_map<int,int> offset_lut;
 
   for(int offset = 0; offset < levelData.size(); offset++) {
     LevelData ld = levelData[offset];
     if(ld.occupied) {
+      if(offset != ld.offset) printf("offset = %d, ld.offset = %d\n", offset, ld.offset);
       for(int i = 0; i < NBORDER; i++) {
         if(levelData[offset + doff[i]].occupied && ld.id < levelData[offset + doff[i]].id) {
           ld.connections.push_back(levelData[offset + doff[i]].id);
@@ -134,100 +123,51 @@ void LevelMap::connect_cells() {
     }
   }
 
-  levelData.clear();
-  levelData.resize(width*height);
-  LevelData ld;
-  for(int i = 0; i < width*height; i++) {
-    levelData.push_back(ld);
-  }
-
   // Map of rooms in order they were created
-  //printf("Level = %d\n", level + 1);
   offset_lut[0] = width/2 + (height/2)*width;
-  for(std::unordered_map<int,LevelData>::iterator it = levelHash.begin(); it!=levelHash.end(); ++it) {
+  for(std::map<int,LevelData>::iterator it = levelHash.begin(); it!=levelHash.end(); ++it) {
     char value = ROOM;
     int offset = width/2 + (height/2)*width;
-    bool visible = true;
-    std::unordered_map<int,LevelData>::iterator findit = levelHash.find(it->first);
+    std::map<int,LevelData>::iterator findit = levelHash.find(it->first);
     if (findit != levelHash.end()) {
       offset = offset_lut[it->first];
     } else {
       continue;
     }
-    if(it == levelHash.begin() || std::next(it) == levelHash.end()) {
-      value = START;
+    if(it == levelHash.begin()) {
+      levelData[offset].active = true;
+      levelData[offset].visible = true;
     }
 
-    for(int j = 0; j < NBOX; j++) {
-      levelData[offset + db[j]].value = value;
-      levelData[offset + db[j]].visible = visible;
-    }
-
-    int cor, offset2;
+    int offset2 = -1;
     for(int j = 0; j < it->second.connections.size(); j++) {
       char c = it->second.connections[j];
       char d = it->second.directions[j];
       switch (d) {
       case 0:
-        cor = offset - 2*width;
-        offset2 = offset - 4*width;
+        offset2 = offset - width;
         break;
       case 1:
-        cor = offset - 2;
-        offset2 = offset - 4;
+        offset2 = offset - 1;
         break;
       case 2:
-        cor = offset + 2;
-        offset2 = offset + 4;
+        offset2 = offset + 1;
         break;
       case 3:
-        cor = offset + 2*width;
-        offset2 = offset + 4*width;
+        offset2 = offset + width;
         break;
       }
       offset_lut[c] = offset2;
-      levelData[cor].value = ROOM;
-      levelData[cor].visible = visible;
-      for(int j = 0; j < NBOX; j++) {
-        levelData[offset2 + db[j]].value = ROOM;
-      }
+      levelData[offset2].value = ROOM;
+      levelData[offset2].active = false;
+      levelData[offset2].visible = false;
     }
-
-    // // Connection information
-    // if(it->second.connections.size() > 0) {
-    //   std::cout << "mapID = " << it->first << ", connections = ";
-    // } else {
-    //   std::cout << "mapID = " << it->first;
-    // }
-    // for(int j = 0; j < it->second.connections.size(); j++) {
-    //   int c = it->second.connections[j];
-    //   int d = it->second.directions[j];
-    //   char dir = ' ';
-    //   switch (d) {
-    //   case 0:
-    //     dir = 'N';
-    //     break;
-    //   case 1:
-    //     dir = 'W';
-    //     break;
-    //   case 2:
-    //     dir = 'E';
-    //     break;
-    //   case 3:
-    //     dir = 'S';
-    //     break;
-    //   }
-    //   std::cout << c << "(" << dir << ") ";
-    // }
-    // std::cout << std::endl;
   }
 }
 
 void LevelMap::create() {
   bool started = true;
   bool restart = true;
-
-  //std::cout << "Level = " << level << ", # of rooms = " << minCells << " to " << maxCells << std::endl;
 
   while(started) {
     if(restart) {
@@ -238,9 +178,7 @@ void LevelMap::create() {
     update(started, restart);
   }
 
-  //std::cout << "# of Restarts = " << restartCount << std::endl;
-
-  connect_cells();
+  connectCells();
 }
 
 void LevelMap::save() {
@@ -255,20 +193,18 @@ void LevelMap::save() {
     for (int x = 0; x < width; x++) {
       int v = 0;
       int offset = x + y*width;
-      if(levelData[offset].visible) {
-        switch (levelData[offset].value) {
-          case ROOM:
-            v = DEPTHMAX;
-            break;
-          case START:
-            v = DEPTHMAX/2;
-            break;
-          case EMPTY:
-            v = 0;
-            break;
-          default:
-            v = 0;
-        }
+      switch (levelData[offset].value) {
+        case ROOM:
+          v = DEPTHMAX;
+          break;
+        case START:
+          v = DEPTHMAX/2;
+          break;
+        case EMPTY:
+          v = 0;
+          break;
+        default:
+          v = 0;
       }
       fprintf(fout, "%d ", v);
     }

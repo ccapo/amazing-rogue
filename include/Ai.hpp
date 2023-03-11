@@ -7,7 +7,6 @@ public:
 
 class PlayerAi: public Ai {
 public:
-    int xpLevel;
     PlayerAi();
     int getNextLevelXp();
     void update(Object *owner);

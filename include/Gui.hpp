@@ -1,4 +1,4 @@
-#define PANEL_HEIGHT (7)
+#define PANEL_HEIGHT (11)
 
 class Menu {
 public :
@@ -8,7 +8,9 @@ public :
         EXIT,
         CONSTITUTION,
         STRENGTH,
-        AGILITY
+        AGILITY,
+        MIND,
+        ACUMEN
     };
     enum DisplayMode {
         MAIN,
@@ -36,8 +38,9 @@ public :
     Menu menu;
 
 protected :
-    TCODConsole *con;
-    TCODConsole *status;
+    TCODConsole *conMsg;
+    TCODConsole *conStatus;
+    TCODConsole *conMiniMap;
     struct Message {
         char *text;
         TCODColor col;

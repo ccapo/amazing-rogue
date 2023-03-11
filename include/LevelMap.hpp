@@ -3,7 +3,7 @@
 
 #include <iostream>
 #include <vector>
-#include <unordered_map>
+#include <map>
 #include <deque>
 #include <random>
 
@@ -17,11 +17,11 @@
 // LevelData struct
 struct LevelData {
   char value;
-  bool occupied, visible;
-  int id, type;
+  bool occupied, visible, active;
+  int id, type, offset;
   std::vector<int> connections;
   std::vector<int> directions;
-  LevelData(): value(EMPTY), occupied(false), visible(false), id(-1) {}
+  LevelData(): value(EMPTY), occupied(false), visible(false), active(false), id(-1), type(0), offset(-1) {}
 };
 
 class LevelMap {
@@ -30,9 +30,8 @@ class LevelMap {
   std::uniform_int_distribution<std::mt19937::result_type> dist;
 
   bool exitPlaced;
-  int width, height, mapID, minCells, maxCells, level;
+  int mapID, minCells, maxCells, level;
   int ncells, restartCount;
-  std::vector<LevelData> levelData;
   std::deque<int> cellQueue;
   std::deque<int> endCells;
 
@@ -40,8 +39,7 @@ class LevelMap {
   bool visit(int offset);
   void init();
   void update(bool &started, bool &restart);
-  void connect_cells();
-  void display();
+  void connectCells();
 public:
   LevelMap(int l);
   ~LevelMap();
@@ -49,7 +47,10 @@ public:
   void create();
   void save();
 
-  std::unordered_map<int, LevelData> levelHash;
+  int width, height;
+  std::map<int,int> offset_lut;
+  std::vector<LevelData> levelData;
+  std::map<int, LevelData> levelHash;
 };
 
 #endif

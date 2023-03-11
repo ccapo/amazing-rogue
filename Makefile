@@ -3,7 +3,7 @@ SRCDIR = src
 INCDIR = include
 #CFLAGS = -O2 -s -w -Wall -std=c++17 -no-pie -I$(INCDIR) `pkg-config libtcod --cflags`
 CFLAGS = -O0 -g -w -Wall -std=c++17 -no-pie -I$(INCDIR) `pkg-config libtcod --cflags`
-LFLAGS = `pkg-config libtcod --libs` -lSDL2 -lm
+LFLAGS = `pkg-config libtcod --libs` -lSDL2 -pthread -lm
 
 .SUFFIXES: .o .hpp .cpp
 

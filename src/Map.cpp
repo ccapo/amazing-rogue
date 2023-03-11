@@ -308,7 +308,7 @@ void Map::makeRoom(int type, bool reset) {
 
             std::vector<int> offsets;
             for (int x = width/4; x < 3*width/4; x++) {
-                for (int y = height/4; y < 3*height/4; y++) {
+                for (int y = height/4 + 1; y < 3*height/4; y++) {
                     if (canWalk(x, y)) {
                         int offset = x + y*width;
                         offsets.push_back(offset);
@@ -322,12 +322,33 @@ void Map::makeRoom(int type, bool reset) {
                 map->setProperties(exit->x, exit->y, true, true);
             }
 
-            // int sz = offsets.size();
-            // int index = rng->getInt(0, sz - 1);
-            // int offset = offsets[index];
-            // int cx = offset % width;
-            // int cy = (offset - cx)/width;
-            // addMonster(cx, cy);
+            // add monsters
+            int noffsets = offsets.size();
+            int nbMonsters = rng->getInt(0,MAX_ROOM_MONSTERS);
+            while (nbMonsters > 0) {
+                noffsets = offsets.size();
+                int index = rng->getInt(0, noffsets - 1);
+                int offset = offsets[index];
+                int cx = offset % width;
+                int cy = (offset - cx)/width;
+                addMonster(cx, cy);
+                nbMonsters--;
+                offsets.erase(offsets.begin() + index);
+            }
+
+            // add items
+            int nbItems = rng->getInt(0,MAX_ROOM_ITEMS);
+            while (nbItems > 0) {
+                noffsets = offsets.size();
+                int index = rng->getInt(0, noffsets - 1);
+                int offset = offsets[index];
+                int cx = offset % width;
+                int cy = (offset - cx)/width;
+                addItem(cx, cy);
+                nbItems--;
+                offsets.erase(offsets.begin() + index);
+            }
+
             break;
         }
         case 1: {
@@ -364,57 +385,39 @@ void Map::makeRoom(int type, bool reset) {
                 map->setProperties(exit->x, exit->y, true, true);
             }
 
-            // int sz = m.floor_tiles.size();
-            // int index = rng->getInt(0, sz - 1);
-            // int offset = m.floor_tiles[index];
-            // int cx = offset % (width/2) + width/4;
-            // int cy = (offset - cx)/(width/2) + height/4;
-            // addMonster(cx, cy);
+            // add monsters
+            int nbMonsters = rng->getInt(0,MAX_ROOM_MONSTERS);
+            int sz = m.floor_tiles.size();
+            while (nbMonsters > 0) {
+                sz = m.floor_tiles.size();
+                int index = rng->getInt(0, sz - 1);
+                int offset = m.floor_tiles[index];
+                int cx = offset % (width/2) + width/4;
+                int cy = (offset - cx)/(width/2) + height/4;
+                addMonster(cx, cy);
+                nbMonsters--;
+                m.floor_tiles.erase(m.floor_tiles.begin() + index);
+            }
+
+            // add items
+            int nbItems = rng->getInt(0,MAX_ROOM_ITEMS);
+            while (nbItems > 0) {
+                sz = m.floor_tiles.size();
+                int index = rng->getInt(0, sz - 1);
+                int offset = m.floor_tiles[index];
+                int cx = offset % (width/2) + width/4;
+                int cy = (offset - cx)/(width/2) + height/4;
+                addItem(cx, cy);
+                nbItems--;
+                m.floor_tiles.erase(m.floor_tiles.begin() + index);
+            }
+
             break;
         }
         default: {
             printf("Unrecognized room type: %d\n", type);
             break;
         }
-    }
-}
-
-void Map::createRoom(bool first, int x1, int y1, int x2, int y2, bool withObjects) {
-    if (!withObjects) {
-        return;
-    }   
-    if ( first ) {
-       // put the player in the first room
-       engine.player->x=(x1+x2)/2;
-       engine.player->y=(y1+y2)/2;
-    } 
-    else {
-        TCODRandom *rng = TCODRandom::getInstance();
-        // add monsters
-        int nbMonsters = rng->getInt(0,MAX_ROOM_MONSTERS);
-        while (nbMonsters > 0) {
-            int x = rng->getInt(x1,x2);
-            int y = rng->getInt(y1,y2);
-            if ( canWalk(x,y) ) {
-                addMonster(x,y);
-            }
-            nbMonsters--;
-        }
-
-        // add items
-        int nbItems = rng->getInt(0,MAX_ROOM_ITEMS);
-        while (nbItems > 0) {
-            int x = rng->getInt(x1,x2);
-            int y = rng->getInt(y1,y2);
-            if ( canWalk(x,y) ) {
-                addItem(x,y);
-            }
-            nbItems--;
-        }
-
-        // set stairs position
-        engine.stairs->x=(x1+x2)/2;
-        engine.stairs->y=(y1+y2)/2;
     }
 }
 
@@ -439,13 +442,13 @@ void Map::addMonster(int x, int y) {
     if ( rng->getInt(0,100) < 80 ) {
         // create an orc
         Object *orc = new Object(x,y,'o',"orc", TCODColor::desaturatedGreen);
-        orc->entity = new CreatureEntity(10,3,0,"dead orc",35);
+        orc->entity = new CreatureEntity(10,3,0,0,0,"dead orc");
         orc->entity->ai = new MonsterAi();
         engine.objects.push(orc);
     } else {
         // create a troll
         Object *troll = new Object(x,y,'T',"troll", TCODColor::darkerGreen);
-        troll->entity = new CreatureEntity(16,4,1,"troll carcass",100);
+        troll->entity = new CreatureEntity(16,4,1,0,0,"troll carcass");
         troll->entity->ai = new MonsterAi();
         engine.objects.push(troll);
     }
@@ -461,20 +464,20 @@ void Map::addItem(int x, int y) {
         healthPotion->item = new Healer(4);
         engine.objects.push(healthPotion);
     } else if ( dice < 70+10 ) {
-        // create a scroll of lightning bolt 
-        Object *scrollOfLightningBolt = new Object(x,y,'#',"scroll of lightning bolt",TCODColor::lightYellow);
+        // create a scroll of bolt 
+        Object *scrollOfLightningBolt = new Object(x,y,'#',"scroll of bolt",TCODColor::lightYellow);
         scrollOfLightningBolt->blocks = false;
         scrollOfLightningBolt->item = new LightningBolt(5,20);
         engine.objects.push(scrollOfLightningBolt);
     } else if ( dice < 70+10+10 ) {
-        // create a scroll of fireball
-        Object *scrollOfFireball = new Object(x,y,'#',"scroll of fireball",TCODColor::lightRed);
+        // create a scroll of flame
+        Object *scrollOfFireball = new Object(x,y,'#',"scroll of flame",TCODColor::lightRed);
         scrollOfFireball->blocks = false;
         scrollOfFireball->item = new Fireball(3,15);
         engine.objects.push(scrollOfFireball);
     } else {
-        // create a scroll of confusion
-        Object *scrollOfConfusion = new Object(x,y,'#',"scroll of confusion",TCODColor::lightBlue);
+        // create a scroll of deluge
+        Object *scrollOfConfusion = new Object(x,y,'#',"scroll of deluge",TCODColor::lightBlue);
         scrollOfConfusion->blocks = false;
         scrollOfConfusion->item = new Confuser(10,8);
         engine.objects.push(scrollOfConfusion);

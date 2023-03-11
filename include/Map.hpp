@@ -28,7 +28,6 @@ protected :
    TCODRandom *rng;
 
    void makeRoom(int type, bool reset = false);
-   void createRoom(bool first, int x1, int y1, int x2, int y2, bool withObjects);
    void addMonster(int x, int y);
    void addItem(int x, int y);
 };

@@ -1,7 +1,8 @@
 #include "main.hpp"
 
-Entity::Entity(int hpMax, int atk, int def, const char *corpseName, int xp) :
-  maxHp(hpMax), hp(hpMax), atk(atk), def(def), corpseName(corpseName), xp(xp), ai(NULL) {
+Entity::Entity(int hpmax, int atk, int def, int matk, int mdef, const char *corpseName):
+  hpmax(hpmax), hp(hpmax), baseAtk(atk), atk(atk), baseDef(def), def(def),
+  baseMatk(matk), matk(matk), baseMdef(def), mdef(mdef), corpseName(corpseName), ai(NULL) {
 }
 
 Entity::~Entity() {
@@ -23,24 +24,29 @@ void Entity::attack(Object *owner, Object *target) {
   }
 }
 
-int Entity::damage(Object *owner, float damage) {
-    damage -= def;
-    if ( damage > 0 ) {
-        hp -= damage;
-        if ( hp <= 0 ) {
-            die(owner);
-        }
-    } else {
-        damage = 0;
+int Entity::damage(Object *owner, int amount) {
+  float d = 0.5*static_cast<float>(amount);
+  d -= 0.25*static_cast<float>(def);
+  amount = static_cast<int>(d);
+  if ( amount > 0 ) {
+    TCODRandom *rng = TCODRandom::getInstance();
+    int r = rng->getInt(1, amount);
+    amount = r;
+    hp -= amount;
+    if ( hp <= 0 ) {
+      die(owner);
     }
-    return damage;
+  } else {
+    amount = 0;
+  }
+  return amount;
 }
 
 int Entity::heal(int amount) {
   hp += amount;
-  if ( hp > maxHp ) {
-    amount -= hp - maxHp;
-    hp = maxHp;
+  if ( hp > hpmax ) {
+    amount -= hp - hpmax;
+    hp = hpmax;
   }
   return amount;
 }
@@ -61,20 +67,19 @@ void Entity::die(Object *owner) {
   engine.sendToBack(owner);
 }
 
-CreatureEntity::CreatureEntity(int hpMax, int atk, int def, const char *corpseName, int xp) :
-  Entity(hpMax, atk, def, corpseName, xp) {
+CreatureEntity::CreatureEntity(int hpmax, int atk, int def, int matk, int mdef, const char *corpseName):
+  Entity(hpmax, atk, def, matk, mdef, corpseName) {
 }
 
 void CreatureEntity::die(Object *owner) {
   // transform it into a nasty corpse! it doesn't block, can't be
   // attacked and doesn't move
-  engine.gui->message(TCODColor::lightGrey,"%s is dead. You gain %d xp", owner->name, xp);
-  engine.player->entity->xp += xp;
+  engine.gui->message(TCODColor::lightGrey,"%s is dead", owner->name);
   Entity::die(owner);
 }
 
-PlayerEntity::PlayerEntity(int hpMax, int atk, int def, const char *corpseName) :
-  Entity(hpMax, atk, def, corpseName, 0) {
+PlayerEntity::PlayerEntity(int hpmax, int atk, int def, int matk, int mdef, const char *corpseName):
+  Entity(hpmax, atk, def, matk, mdef, corpseName) {
 }
 
 void PlayerEntity::die(Object *owner) {

@@ -3,43 +3,57 @@
 #include "main.hpp"
 
 static const int BAR_WIDTH = 20;
-static const int MSG_X = BAR_WIDTH+2;
-static const int MSG_HEIGHT = PANEL_HEIGHT-1;
+static const int MSG_X = BAR_WIDTH + 2;
+static const int MSG_HEIGHT = PANEL_HEIGHT - 2;
 
 Gui::Gui() {
-    con = new TCODConsole(engine.screenWidth,PANEL_HEIGHT);
-    status = new TCODConsole(engine.screenWidth,2);
+    conMsg = new TCODConsole(engine.screenWidth - BAR_WIDTH - 1, PANEL_HEIGHT);
+    conStatus = new TCODConsole(engine.screenWidth, 3);
+    conMiniMap = new TCODConsole(BAR_WIDTH + 1, PANEL_HEIGHT);
 }
 
 Gui::~Gui() {
-    delete con;
-    delete status;
+    delete conMsg;
+    delete conStatus;
+    delete conMiniMap;
     clear();
 }
 
 void Gui::render() {
+    static const TCODColor darkWall(0,0,100);
+    static const TCODColor darkGround(50,50,150);
+    static const TCODColor lightWall(130,110,50);
+    static const TCODColor lightGround(200,180,50);
+
     // clear the GUI console
-    con->setDefaultBackground(TCODColor::black);
-    con->clear();
-    status->setDefaultBackground(TCODColor::black);
-    status->clear();
+    conMsg->setDefaultBackground(TCODColor::black);
+    conMsg->clear();
+    conStatus->setDefaultBackground(TCODColor::black);
+    conStatus->clear();
+    conMiniMap->setDefaultBackground(TCODColor::black);
+    conMiniMap->clear();
+
+    conMsg->printFrame(0, 0, engine.screenWidth - BAR_WIDTH - 1, PANEL_HEIGHT, false, TCOD_BKGND_SET, "Message Log");
+    conMiniMap->printFrame(0, 0, BAR_WIDTH + 1, PANEL_HEIGHT, false, TCOD_BKGND_SET, "Lvl %d", engine.level + 1);
 
     // draw the health bar
     renderBar(1,1,BAR_WIDTH,"HP",engine.player->entity->hp,
-        engine.player->entity->maxHp,
+        engine.player->entity->hpmax,
         TCODColor::lightRed,TCODColor::darkerRed);
 
     // dungeon level
-    status->setDefaultForeground(TCODColor::white);
-    status->print(BAR_WIDTH + 2,1,"Lvl: %d",engine.level + 1);
+    conStatus->setDefaultForeground(TCODColor::white);
+    int atk = engine.player->entity->atk, def = engine.player->entity->def;
+    int matk = engine.player->entity->matk, mdef = engine.player->entity->mdef;
+    conStatus->print(BAR_WIDTH + 2,1,"ATK: %d DEF: %d MATK: %d MDEF: %d", atk, def, matk, mdef);
 
     // draw the message log
     int y = 1;
     float colorCoef = 0.4f;
     for (Message **it = log.begin(); it != log.end(); it++) {
-        Message *message=*it;
-        con->setDefaultForeground(message->col * colorCoef);
-        con->print(MSG_X,y,message->text);
+        Message *message = *it;
+        conMsg->setDefaultForeground(message->col * colorCoef);
+        conMsg->print(2, y, message->text);
         y++;
         if ( colorCoef < 1.0f ) {
             colorCoef += 0.3f;
@@ -49,31 +63,54 @@ void Gui::render() {
     // mouse look
     renderMouseLook();
 
-    con->setDefaultForeground(TCODColor::white);
+    conMsg->setDefaultForeground(TCODColor::white);
+
+    LevelMap *lm = engine.levelMaps.get(engine.level);
+    int offset = lm->levelHash[engine.roomID].offset;
+    int xRoom = offset % lm->width;
+    int yRoom = (offset - xRoom)/lm->width;
+    int cx = xRoom - BAR_WIDTH/2, cy = yRoom - (PANEL_HEIGHT - 1)/2;
+    if(cx < 0) cx = 0;
+    if(cy < 0) cy = 0;
+    if(cx > lm->width - BAR_WIDTH - 1) cx = lm->width - BAR_WIDTH - 1;
+    if(cy > lm->height - (PANEL_HEIGHT - 1) - 1) cy = lm->height - (PANEL_HEIGHT - 1) - 1;
+
+    for (int y = 0; y < lm->height; y++) {
+        for (int x = 0; x < lm->width; x++) {
+            int offset = x + y*lm->width;
+            TCODColor col = lightGround;
+            if(lm->levelData[offset].visible) {
+                if(!lm->levelData[offset].active) col = darkGround;
+                conMiniMap->setCharBackground(x - cx, y - cy, col);
+            }
+        }
+    }
 
     // blit the GUI console on the root console
-    TCODConsole::blit(con,0,0,engine.screenWidth,PANEL_HEIGHT,TCODConsole::root,0,engine.screenHeight-PANEL_HEIGHT);
+    TCODConsole::blit(conMsg, 0, 0, engine.screenWidth - BAR_WIDTH - 1, PANEL_HEIGHT, TCODConsole::root, BAR_WIDTH + 1, engine.screenHeight - PANEL_HEIGHT);
     // blit the GUI console on the root console
-    TCODConsole::blit(status,0,0,engine.screenWidth,3,TCODConsole::root,0,0);
+    TCODConsole::blit(conStatus, 0, 0, engine.screenWidth, 3, TCODConsole::root, 0, 0);
+
+    TCODConsole::blit(conMiniMap, 0, 0, BAR_WIDTH + 1, PANEL_HEIGHT, TCODConsole::root, 0, engine.screenHeight - PANEL_HEIGHT);
 }
 
 void Gui::renderBar(int x, int y, int width, const char *name,
     float value, float maxValue, const TCODColor &barColor,
     const TCODColor &backColor) {
     // fill the background
-    status->setDefaultBackground(backColor);
-    status->rect(x,y,width,1,false,TCOD_BKGND_SET);
+    conStatus->setDefaultBackground(backColor);
+    conStatus->rect(x,y,width,1,false,TCOD_BKGND_SET);
 
     int barWidth = (int)(value / maxValue * width);
     if ( barWidth > 0 ) {
         // draw the bar
-        status->setDefaultBackground(barColor);
-        status->rect(x,y,barWidth,1,false,TCOD_BKGND_SET);
+        conStatus->setDefaultBackground(barColor);
+        conStatus->rect(x,y,barWidth,1,false,TCOD_BKGND_SET);
     }
 
     // print text on top of the bar
-    status->setDefaultForeground(TCODColor::white);
-    status->printEx(x+width/2,y,TCOD_BKGND_NONE,TCOD_CENTER,
+    conStatus->setDefaultForeground(TCODColor::white);
+    conStatus->printEx(x+width/2,y,TCOD_BKGND_NONE,TCOD_CENTER,
         "%s : %g/%g", name, value, maxValue);
 }
 
@@ -109,8 +146,8 @@ void Gui::renderMouseLook() {
         }
     }
     // display the list of objects under the mouse cursor
-    con->setDefaultForeground(TCODColor::lightGrey);
-    con->print(1,0,buf);
+    conMsg->setDefaultForeground(TCODColor::lightGrey);
+    conMsg->print(1,0,buf);
 }
 
 void Gui::message(const TCODColor &col, const char *text, ...) {
@@ -162,7 +199,7 @@ void Menu::addItem(MenuItemCode code, const char *label) {
 }
 
 const int PAUSE_MENU_WIDTH = 30;
-const int PAUSE_MENU_HEIGHT = 15;
+const int PAUSE_MENU_HEIGHT = 18;
 Menu::MenuItemCode Menu::pick(DisplayMode mode) {
     int selectedItem = 0;
     int menux,menuy;
@@ -173,7 +210,7 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode) {
         TCODConsole::root->printFrame(menux,menuy,PAUSE_MENU_WIDTH,PAUSE_MENU_HEIGHT,true,
             TCOD_BKGND_ALPHA(70),"menu");       
         menux += 2;
-        menuy += 3;
+        menuy += 2;
     } else {
         static TCODImage img("data/img/main_menu.png");
         img.blit2x(TCODConsole::root,0,0);
@@ -184,14 +221,22 @@ Menu::MenuItemCode Menu::pick(DisplayMode mode) {
     while( !TCODConsole::isWindowClosed() ) {
         int currentItem = 0;
         TCODConsole::root->setDefaultForeground(TCODColor::lightRed);
-        TCODConsole::root->print(menux, menuy, "Amazing Rogue");
+        if (mode == PAUSE) {
+            TCODConsole::root->print(menux, menuy, "Attribute Upgrade");
+        } else {
+            TCODConsole::root->print(menux, menuy, "Amazing Rogue");
+        }
         for (MenuItem **it = items.begin(); it!=items.end(); it++) {
             if ( currentItem == selectedItem ) {
                 TCODConsole::root->setDefaultForeground(TCODColor::lighterOrange);
             } else {
                 TCODConsole::root->setDefaultForeground(TCODColor::lightGrey);
             }
-            TCODConsole::root->print(menux,menuy+6+currentItem*3,(*it)->label);
+            if (mode == PAUSE) {
+                TCODConsole::root->print(menux,menuy+4+currentItem*2,(*it)->label);
+            } else {
+                TCODConsole::root->print(menux,menuy+6+currentItem*3,(*it)->label);
+            }
             currentItem++;
         }
         TCODConsole::flush();

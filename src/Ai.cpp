@@ -1,46 +1,13 @@
 #include <math.h>
 #include "main.hpp"
 
-PlayerAi::PlayerAi() : xpLevel(1) {}
-
-const int LEVEL_UP_BASE = 200;
-const int LEVEL_UP_FACTOR = 150;
-
-int PlayerAi::getNextLevelXp() {
-    return LEVEL_UP_BASE + xpLevel*LEVEL_UP_FACTOR;
-}
+PlayerAi::PlayerAi() {}
 
 // how many turns the monster chases the player
 // after losing his sight
 static const int TRACKING_TURNS = 3;
 
 void PlayerAi::update(Object *owner) {
-    TCODRandom *rng = TCODRandom::getInstance();
-    int levelUpXp = getNextLevelXp();
-    if ( owner->entity->xp >= levelUpXp ) {
-        xpLevel++;
-        owner->entity->xp -= levelUpXp;
-        engine.gui->message(TCODColor::yellow,"Your battle skills grow stronger! You reached level %d",xpLevel);
-        engine.gui->menu.clear();
-        engine.gui->menu.addItem(Menu::CONSTITUTION,"Constitution (+20HP)");
-        engine.gui->menu.addItem(Menu::STRENGTH,"Strength (+1 attack)");
-        engine.gui->menu.addItem(Menu::AGILITY,"Agility (+1 defense)");
-        Menu::MenuItemCode menuItem = engine.gui->menu.pick(Menu::PAUSE);
-        switch (menuItem) {
-            case Menu::CONSTITUTION :
-                owner->entity->maxHp += 20;
-                owner->entity->hp += 20;
-                break;
-            case Menu::STRENGTH :
-                owner->entity->atk += 1;
-                break;
-            case Menu::AGILITY :
-                owner->entity->def += 1;
-                break;
-            default:break;
-        }
-    }
-
     if ( owner->entity && owner->entity->isDead() ) {
         return;
     }
@@ -66,6 +33,37 @@ void PlayerAi::update(Object *owner) {
     case TCODK_RIGHT : dx = 1; break;
     case TCODK_ENTER: {
         if ( engine.stairs->x == owner->x && engine.stairs->y == owner->y ) {
+            engine.gui->message(TCODColor::yellow,"Your battle skills grow stronger!");
+            engine.gui->menu.clear();
+            engine.gui->menu.addItem(Menu::CONSTITUTION,"Constitution (+25 HP)");
+            engine.gui->menu.addItem(Menu::STRENGTH,    "Strength     (+1 ATK)");
+            engine.gui->menu.addItem(Menu::AGILITY,     "Agility      (+1 DEF)");
+            engine.gui->menu.addItem(Menu::MIND,        "Mind         (+1 MATK)");
+            engine.gui->menu.addItem(Menu::ACUMEN,      "Acumen       (+1 MDEF)");
+            Menu::MenuItemCode menuItem = engine.gui->menu.pick(Menu::PAUSE);
+            switch (menuItem) {
+                case Menu::CONSTITUTION:
+                    owner->entity->hpmax += 25;
+                    owner->entity->hp += 25;
+                    break;
+                case Menu::STRENGTH:
+                    owner->entity->baseAtk += 1;
+                    owner->entity->atk += 1;
+                    break;
+                case Menu::AGILITY:
+                    owner->entity->baseDef += 1;
+                    owner->entity->def += 1;
+                    break;
+                case Menu::MIND:
+                    owner->entity->baseMatk += 1;
+                    owner->entity->matk += 1;
+                    break;
+                case Menu::ACUMEN:
+                    owner->entity->baseMdef += 1;
+                    owner->entity->mdef += 1;
+                    break;
+                default:break;
+            }
             engine.nextLevel();
         }
     }
@@ -77,7 +75,8 @@ void PlayerAi::update(Object *owner) {
         engine.gameStatus = Engine::NEW_TURN;
         Object *exit = engine.getExit(owner->x + dx, owner->y + dy);
         if (exit) {
-            engine.nextRoom(exit->connectedID, 0*rng->getInt(0, 1), false);
+            TCODRandom *rng = TCODRandom::getInstance();
+            engine.nextRoom(exit->connectedID, 0*rng->getInt(0, 2), false);
             engine.map->computeFov();
             return;
         }
