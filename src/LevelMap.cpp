@@ -105,6 +105,26 @@ void LevelMap::update(bool &started, bool &restart) {
   return;
 }
 
+void LevelMap::makeBossLevel() {
+  int offset = width/2 + (height/2)*width;
+  offset -= width;
+  levelData[offset].occupied = true;
+  levelData[offset].id = mapID++;
+  levelData[offset].value = ROOM;
+  offset -= width;
+  levelData[offset].occupied = true;
+  levelData[offset].id = mapID++;
+  levelData[offset].value = ROOM;
+  offset -= width;
+  levelData[offset].occupied = true;
+  levelData[offset].id = mapID++;
+  levelData[offset].value = ROOM;
+  offset -= width;
+  levelData[offset].occupied = true;
+  levelData[offset].id = mapID++;
+  levelData[offset].value = ROOM;
+}
+
 void LevelMap::connectCells() {
   //                              N,  W,  E, S
   const int doff[NBORDER] = {-width, -1, +1, +width};
@@ -122,6 +142,7 @@ void LevelMap::connectCells() {
       levelHash[ld.id] = ld;
     }
   }
+
 
   // Map of rooms in order they were created
   offset_lut[0] = width/2 + (height/2)*width;
@@ -166,16 +187,21 @@ void LevelMap::connectCells() {
 }
 
 void LevelMap::create() {
-  bool started = true;
-  bool restart = true;
+  if (level < LEVELMAX) {
+    bool started = true;
+    bool restart = true;
 
-  while(started) {
-    if(restart) {
-      restart = false;
-      started = true;
-      init();
+    while(started) {
+      if(restart) {
+        restart = false;
+        started = true;
+        init();
+      }
+      update(started, restart);
     }
-    update(started, restart);
+  } else {
+    init();
+    makeBossLevel();
   }
 
   connectCells();

@@ -392,9 +392,9 @@ void Map::makeRoom(int type, bool reset) {
                 sz = m.floor_tiles.size();
                 int index = rng->getInt(0, sz - 1);
                 int offset = m.floor_tiles[index];
-                int cx = offset % (width/2) + width/4;
-                int cy = (offset - cx)/(width/2) + height/4;
-                addMonster(cx, cy);
+                int cx = offset % (width/2);
+                int cy = (offset - cx)/(width/2);
+                addMonster(cx + width/4, cy + height/4);
                 nbMonsters--;
                 m.floor_tiles.erase(m.floor_tiles.begin() + index);
             }
@@ -405,13 +405,25 @@ void Map::makeRoom(int type, bool reset) {
                 sz = m.floor_tiles.size();
                 int index = rng->getInt(0, sz - 1);
                 int offset = m.floor_tiles[index];
-                int cx = offset % (width/2) + width/4;
-                int cy = (offset - cx)/(width/2) + height/4;
-                addItem(cx, cy);
+                int cx = offset % (width/2);
+                int cy = (offset - cx)/(width/2);
+                addItem(cx + width/4, cy + height/4);
                 nbItems--;
                 m.floor_tiles.erase(m.floor_tiles.begin() + index);
             }
 
+            break;
+        }
+        case 2: {
+            // Boss Level
+            for (int x = width/4; x < 3*width/4; x++) {
+                for (int y = height/4; y < 3*height/4; y++) {
+                    map->setProperties(x, y, true, true);
+                }
+            }
+
+            engine.player->x = 1 + width/4;
+            engine.player->y = height/2;
             break;
         }
         default: {

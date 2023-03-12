@@ -180,17 +180,25 @@ Object *Engine::getExit(int x, int y) const {
 
 void Engine::nextLevel() {
     level++;
-    if(level >= LEVELMAX) {
-        printf("Congratulations, you have reached the end of the game!\n");
-        exit(0);
+    if(level < LEVELMAX) {
+        gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
+        player->entity->heal(player->entity->hpmax/2);
+        gui->message(TCODColor::red,"After a rare moment of peace, you descend\ndeeper into the heart of the dungeon...");
+
+        nextRoom(0, 0, true);
+
+        gameStatus = STARTUP;
+    } else {
+        // printf("Congratulations, you have reached the end of the game!\n");
+        // exit(0);
+        gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
+        player->entity->heal(player->entity->hpmax/2);
+        gui->message(TCODColor::red,"After a rare moment of peace, you descend\nto the deepest part of the dungeon...");
+
+        nextRoom(0, 2, true);
+
+        gameStatus = STARTUP;
     }
-    gui->message(TCODColor::lightViolet,"You take a moment to rest, and recover your strength.");
-    player->entity->heal(player->entity->hpmax/2);
-    gui->message(TCODColor::red,"After a rare moment of peace, you descend\ndeeper into the heart of the dungeon...");
-
-    nextRoom(0, 0, true);
-
-    gameStatus = STARTUP;
 }
 
 void Engine::nextRoom(int destID, int type, bool reset) {
@@ -206,6 +214,7 @@ void Engine::nextRoom(int destID, int type, bool reset) {
         }
     }
     exits.clearAndDelete();
+
 
     if(level < LEVELMAX) {
         if(levelMaps.get(level)->levelHash[roomID].connections.size() == 0) {
@@ -241,11 +250,12 @@ void Engine::nextRoom(int destID, int type, bool reset) {
     for(int i = 0; i < levelMaps.get(level)->levelHash[roomID].connections.size(); i++) {
         int c = levelMaps.get(level)->levelHash[roomID].connections[i];
         int d = levelMaps.get(level)->levelHash[roomID].directions[i];
+
         int xe, ye;
         switch (d) {
         case 0:
             // North
-            if(type == 0) {
+            if(type == 0 || type == 2) {
                 xe = screenWidth/2;
                 ye = (screenHeight - PANEL_HEIGHT)/4;
             } else {
@@ -255,7 +265,7 @@ void Engine::nextRoom(int destID, int type, bool reset) {
             break;
         case 1:
             // West
-            if(type == 0) {
+            if(type == 0 || type == 2) {
                 xe = screenWidth/4;
                 ye = (screenHeight - PANEL_HEIGHT)/2;
             } else {
@@ -265,7 +275,7 @@ void Engine::nextRoom(int destID, int type, bool reset) {
             break;
         case 2:
             // East
-            if(type == 0) {
+            if(type == 0 || type == 2) {
                 xe = 3*screenWidth/4;
                 ye = (screenHeight - PANEL_HEIGHT)/2;
             } else {
@@ -275,7 +285,7 @@ void Engine::nextRoom(int destID, int type, bool reset) {
             break;
         case 3:
             // South
-            if(type == 0) {
+            if(type == 0 || type == 2) {
                 xe = screenWidth/2;
                 ye = 3*(screenHeight - PANEL_HEIGHT)/4;
             } else {
@@ -305,7 +315,7 @@ void Engine::nextRoom(int destID, int type, bool reset) {
 // This function will be called from a thread
 void Engine::generateLevelMaps(std::atomic<bool> &levelMapsReady) {
     printf("Generating other level maps\n");
-    for (int l = 1; l < LEVELMAX; l++) {
+    for (int l = 1; l <= LEVELMAX; l++) {
         LevelMap *lm = new LevelMap(l);
         lm->create();
 #ifdef DEBUG

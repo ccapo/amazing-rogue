@@ -25,9 +25,7 @@ void Entity::attack(Object *owner, Object *target) {
 }
 
 int Entity::damage(Object *owner, int amount) {
-  float d = 0.5*static_cast<float>(amount);
-  d -= 0.25*static_cast<float>(def);
-  amount = static_cast<int>(d);
+  amount -= def;
   if ( amount > 0 ) {
     TCODRandom *rng = TCODRandom::getInstance();
     int r = rng->getInt(1, amount);

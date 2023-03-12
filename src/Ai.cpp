@@ -44,7 +44,6 @@ void PlayerAi::update(Object *owner) {
             switch (menuItem) {
                 case Menu::CONSTITUTION:
                     owner->entity->hpmax += 25;
-                    owner->entity->hp += 25;
                     break;
                 case Menu::STRENGTH:
                     owner->entity->baseAtk += 1;
@@ -76,7 +75,8 @@ void PlayerAi::update(Object *owner) {
         Object *exit = engine.getExit(owner->x + dx, owner->y + dy);
         if (exit) {
             TCODRandom *rng = TCODRandom::getInstance();
-            engine.nextRoom(exit->connectedID, 0*rng->getInt(0, 2), false);
+            int roomType = engine.level < LEVELMAX ? rng->getInt(0, 1) : 2;
+            engine.nextRoom(exit->connectedID, roomType, false);
             engine.map->computeFov();
             return;
         }

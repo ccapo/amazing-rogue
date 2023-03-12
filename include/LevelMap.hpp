@@ -39,6 +39,7 @@ class LevelMap {
   bool visit(int offset);
   void init();
   void update(bool &started, bool &restart);
+  void makeBossLevel();
   void connectCells();
 public:
   LevelMap(int l);
